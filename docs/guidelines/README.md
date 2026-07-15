@@ -7,12 +7,13 @@
 | ファイル | 役割 | ロードタイミング |
 | :--- | :--- | :--- |
 | `dada_document_guidelines.md` | ドキュメント作成ガイドライン（標準目次構造） | 文書の執筆・更新時 |
-| `asdoq_checklist.md` | ASDoQ品質チェックリスト（軽量版） | **通常時**のレビュー・セルフチェック時 |
+| `asdoq_writing_rules.md` | ASDoQ執筆ルール12箇条（作成者向け・予防的品質作り込み） | 文書の**執筆・修正時**（作成者スキル） |
+| `asdoq_checklist.md` | ASDoQ品質チェックリスト（軽量版・文書別重点特性ガイド付き） | **通常時**のレビュー時（レビュアースキル） |
 | `asdoq_model_markdown.md` | ASDoQ品質モデル（フル版：例文・違反例付き） | 「ASDoQ文書品質モデルに基づき厳密にレビューして」と指示された時のみ |
 | `coding_guidelines.md` | コーディング規約（JSDoc、命名規則等） | 実装フェーズ（Phase 4）でのコード作成・レビュー時 |
 
 ## 運用ルール
 
 1. **デフォルト**では `dada_document_guidelines.md` の標準目次構造に従って文書を作成します。
-2. **ASDoQ品質チェック**は通常は軽量版（`asdoq_checklist.md`）で高速にレビューし、厳密な校正が必要な場合のみフル版をロードします（二段構え）。
+2. **ASDoQ品質モデルは三層で活用**します。執筆時は `asdoq_writing_rules.md`（書く時点で違反を作らない）、レビュー時は軽量版 `asdoq_checklist.md`（文書別の重点特性に集中して検出）、厳密な校正が必要な場合のみフル版 `asdoq_model_markdown.md` をロードします。
 3. Product Ownerから「IEEE29148に準拠」等のテンプレート指定があった場合は、`docs/templates/` 配下のひな形が本ガイドラインより**優先**されます。

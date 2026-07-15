@@ -11,19 +11,25 @@ description: DADA (Document and Agent Driven Agile) プロセスにおいて、A
 
 ## 1. 目的と適用範囲
 本ガイドラインは、DADA (Document and Agent Driven Agile) プロセスにおいて、AIエージェントが開発ドキュメントを作成・更新するための軽量なルールブックである。
-作成対象となるドキュメントは以下の3種類に限定する。
+作成対象となるドキュメントは以下の3種類に限定する（番号は作成順）。
 1. **ソフトウェア要求仕様書 (SRS)**
-2. **ソフトウェアアーキテクチャ設計書 (Architecture Design)**
-3. **ソフトウェア総合テスト仕様書・報告書 (SWP6)**
+2. **ソフトウェア総合テスト仕様書・報告書 (SWP6)**
+3. **ソフトウェアアーキテクチャ設計書 (Architecture Design)**
 
 ## 2. エージェントへの基本ルール（Agent Instructions）
-* **一貫性と追跡可能性:** 要求(SRS) → 設計(Arch) → テスト(Test) の間で内容に矛盾や飛躍がないこと。
+* **一貫性と追跡可能性:** 要求(SRS) → 総合テスト(Test) → 設計(Arch) の間で内容に矛盾や飛躍がないこと。
 * **出力形式:** 原則としてMarkdown形式で出力し、可読性を高く保つこと。
-※ ドキュメント絶対主義、自己校正の手順、記述すべきDADAコア要件（Agentic Testability等）の詳細は、`.agents/rules/dada_workspace_rules.md` に従うこと。
+※ ドキュメント絶対主義、自己校正の手順、記述すべきDADAコア要件（Agentic Testability等）の詳細は、`.agents/AGENTS.md`（ワークスペースルール）に従うこと。
 
 ---
 
 ## 3. ドキュメント別 標準目次構造
+
+> [!NOTE]
+> 以下の目次構造を具体化した**記入用スケルトン（記入例付き）**が、各ペルソナスキルの `references/` に用意されている。新規作成時はスケルトンのコピーを出発点とすること。
+> - SW105: `.agents/skills/requirements-engineer/references/SW105_skeleton.md`
+> - SWP6: `.agents/skills/test-engineer/references/SWP6_skeleton.md`
+> - SW205: `.agents/skills/architect/references/SW205_skeleton.md`
 
 ### 【A】 ソフトウェア要求仕様書 (SW105)
 本ドキュメントは、要求定義の最終成果物である。後工程（アーキテクチャ設計、総合テスト）で「合否判定」が可能なレベルまで解像度を上げて記述すること。
@@ -54,7 +60,7 @@ description: DADA (Document and Agent Driven Agile) プロセスにおいて、A
 * **7. その他・特記事項**: 未決定事項（TBD）や引き継ぎ事項。
 
 ### 【B】 ソフトウェア・アーキテクチャ設計書 (SW205)
-SW105を満たすための「静的構造」と「動的振る舞い」を定義し、詳細設計・実装の入力として曖昧さのない状態にすること。
+SW105を満たすための「静的構造」と「動的振る舞い」を定義し、詳細設計・実装の入力として曖昧さのない状態にすること。先行して承認された総合テスト仕様（SWP6）の「自動」テスト項目がすべて実行可能な構造であること。
 
 * **1. 概要**:
   * 1.1 目的と位置づけ / 1.2 適用範囲 / 1.3 参照ドキュメント / 1.4 用語定義
@@ -74,7 +80,7 @@ SW105を満たすための「静的構造」と「動的振る舞い」を定義
 * **8. その他・特記事項**: 未決定事項や注意事項。
 
 ### 【C】 ソフトウェア総合テスト仕様書・報告書 (SWP6)
-「テスト仕様書」と「テスト報告書」を兼ねる。**まず計画フェーズで1〜4章を設計**し、テスト実行後に**結果（5〜6章）を追記して報告書として完成**させる。
+「テスト仕様書」と「テスト報告書」を兼ねる。**まず計画フェーズ（Phase 2: アーキテクチャ設計より先）で1〜4章を設計**し、テスト実行後に**結果（5〜6章）を追記して報告書として完成**させる。計画時点で設計が未確定のため、テスト環境・ツール等の設計依存項目は「TBD（Phase 3で確定）」と明記してよい。
 
 **【計画フェーズ】**
 * **1. テストの概要と目的**:
@@ -95,4 +101,4 @@ SW105を満たすための「静的構造」と「動的振る舞い」を定義
 ---
 
 ## 4. 自己校正のレビュー基準 (Self-Correction Criteria)
-エージェントは自律的かつ瞬時に自己精査（Self-Correction）を完結させること。レビュー時の評価基準は `.agents/rules/dada_workspace_rules.md` の「共通行動指針」に従い、通常は `docs/guidelines/asdoq_checklist.md`（軽量版）、詳細校正時は `docs/guidelines/asdoq_model_markdown.md`（フル版）を使用する。
+エージェントは自律的かつ瞬時に自己精査（Self-Correction）を完結させること。品質基準は `.agents/AGENTS.md`（ワークスペースルール）の「共通行動指針」に従い、執筆時は `docs/guidelines/asdoq_writing_rules.md`（執筆ルール12箇条）、レビュー時は `docs/guidelines/asdoq_checklist.md`（軽量版）、詳細校正時は `docs/guidelines/asdoq_model_markdown.md`（フル版）を使用する。
