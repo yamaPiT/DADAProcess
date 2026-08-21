@@ -102,3 +102,5 @@ SW105を満たすための「静的構造」と「動的振る舞い」を定義
 
 ## 4. 自己校正のレビュー基準 (Self-Correction Criteria)
 エージェントは自律的かつ瞬時に自己精査（Self-Correction）を完結させること。品質基準は `.agents/AGENTS.md`（ワークスペースルール）の「共通行動指針」に従い、執筆時は `docs/guidelines/asdoq_writing_rules.md`（執筆ルール12箇条）、レビュー時は `docs/guidelines/asdoq_checklist.md`（軽量版）、詳細校正時は `docs/guidelines/asdoq_model_markdown.md`（フル版）を使用する。
+
+なお、ID対応の照合・曖昧語の走査・表の空欄検出といった**機械的な検証は、スキル `dada-check`（`python tools/dada_check.py all`）に委譲**すること。自己校正の思考は、機械では判定できない内容の妥当性（要求の適否・テストの十分性・設計の適切さ）に集中させる。

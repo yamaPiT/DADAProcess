@@ -21,6 +21,8 @@
 
 ## 引き継ぎ事項・注意点
 - **スケール判定**: （Hotfix / Minor / Major と理由）
+- **実行プロファイル**: （Guided / Autonomous）
+- **機械チェックの状態**: （`python tools/dada_check.py all --summary` の要約行）
 - **Product Ownerからの特別な指示**: （なければ「なし」）
 - **未解決のTBD・技術的リスク**: （なければ「なし」）
 - **次フェーズで注意すべきポイント**: （なければ「なし」）

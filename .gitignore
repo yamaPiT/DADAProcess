@@ -11,3 +11,10 @@
 
 # Antigravity Rules
 use-context7-for-docs.md
+
+# DADA 機械チェックの生成物（毎回再生成されるため履歴管理しない）
+docs/process/check_report.md
+
+# Python
+__pycache__/
+*.py[cod]
