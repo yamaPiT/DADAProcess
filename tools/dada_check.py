@@ -745,13 +745,42 @@ def iter_source_files(root: Path):
         yield path
 
 
+def declared_artifact_units(root: Path, sw205) -> list[dict]:
+    """SW205で「成果物パス」を明示しているUNITを返す。
+
+    エージェント定義開発では、ユニットの実装がリポジトリ直下のソースツリーではなく
+    `.agents/` や `tools/` 配下（走査除外ディレクトリ）に置かれる。この場合は
+    ソースツリーの走査ではなく、設計書が宣言したパスを直接照合する。
+    従来型プログラム開発のSW205は「成果物パス」を持たないため、本関数は空を返し、
+    照合の挙動は一切変わらない。
+    """
+    result = []
+    for block in sw205.id_blocks("UNIT"):
+        if block["id"].endswith("-EX"):
+            continue
+        declared = sw205.field_value(block, "成果物パス", "成果物ファイル").strip()
+        if not declared:
+            continue
+        for token in re.split(r"[、,\s]+", declared.strip("`")):
+            token = token.strip().strip("`").strip()
+            if token:
+                result.append({"id": block["id"], "path": token})
+                break
+    return result
+
+
 def check_code(root: Path, docs: dict) -> Section:
     sec = Section("3. ソースコード照合（設計・テストとの対応）")
+    sw205_doc = docs.get("SW205")
+    declared = declared_artifact_units(root, sw205_doc) if sw205_doc is not None else []
     files = list(iter_source_files(root))
-    if not files:
+    if not files and not declared:
         sec.note("ソースコードが検出されなかった（Phase 4 開始前であれば正常）。")
         return sec
     sec.note("走査したソースファイル: {} 件".format(len(files)))
+    if declared:
+        sec.note("設計書が成果物パスを宣言したUNIT: {} 件（ソースツリー走査ではなく宣言パスを照合）"
+                 .format(len(declared)))
 
     unit_hits: dict = {}
     tc_hits: dict = {}
@@ -773,16 +802,38 @@ def check_code(root: Path, docs: dict) -> Section:
                             "意図的なら理由をコメントで明記する。テストを通すための無効化は禁止")
                     break
 
-    sw205 = docs.get("SW205")
+    sw205 = sw205_doc
     if sw205 is not None:
+        declared_map = {d["id"]: d["path"] for d in declared}
+        for uid, decl_path in sorted(declared_map.items()):
+            target = (root / decl_path).resolve()
+            loc = "{} / {}".format(sw205.rel, uid)
+            if not target.is_file():
+                sec.add(HIGH, loc,
+                        "設計書が宣言した成果物パスが存在しない: {}".format(decl_path),
+                        "成果物を生成するか、設計書の成果物パスを実体に合わせる")
+                continue
+            try:
+                body = target.read_text(encoding="utf-8-sig", errors="replace")
+            except OSError:
+                sec.add(HIGH, loc,
+                        "成果物パスのファイルを読み込めない: {}".format(decl_path),
+                        "ファイルの権限・文字コードを確認する")
+                continue
+            if uid not in collect_ids(body, "UNIT"):
+                sec.add(HIGH, loc,
+                        "成果物 {} に対応UNIT-IDの記載がない".format(decl_path),
+                        "ファイル冒頭（自然言語ならfrontmatter直後、コードならヘッダ）に対応IDを明記する")
+
         unit_ids = [b["id"] for b in sw205.id_blocks("UNIT") if not b["id"].endswith("-EX")]
-        missing = [u for u in unit_ids if u not in unit_hits]
+        scan_ids = [u for u in unit_ids if u not in declared_map]
+        missing = [u for u in scan_ids if u not in unit_hits]
         for u in missing:
             sec.add(HIGH, "{} / {}".format(sw205.rel, u),
                     "このUNIT-IDを参照するソースファイルがない（未実装、またはヘッダのID記載漏れ）",
                     "実装するか、ファイル・関数ヘッダに対応IDを明記する")
-        if unit_ids:
-            sec.note("UNIT↔コード 対応: {}/{} 件".format(len(unit_ids) - len(missing), len(unit_ids)))
+        if scan_ids:
+            sec.note("UNIT↔コード 対応: {}/{} 件".format(len(scan_ids) - len(missing), len(scan_ids)))
 
     swp6 = docs.get("SWP6")
     if swp6 is not None:
