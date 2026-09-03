@@ -13,6 +13,9 @@
      走査除外ディレクトリにあっても照合が通ることを保証する。
   3. 宣言された成果物パスの実体を削除すると High として検出され、
      終了コード 1 になること。照合が形骸化していないことを保証する。
+  4. 5〜6章が空のSWP6に対して `report` が High（終了コード 1）になること。
+     かつ同じ成果物で `all` は 0 のままであること（report を all に入れない）。
+  5. 5.2と6.2を記入したSWP6に対して `report` が終了コード 0 になること。
 """
 import subprocess
 import sys
@@ -76,6 +79,36 @@ SWP6 = """# SWP6 ソフトウェア総合テスト仕様書・報告書
 
 ## 6. 総合評価
 未実施。
+"""
+
+SWP6_REPORTED = """# SWP6 ソフトウェア総合テスト仕様書・報告書
+
+## 1. はじめに
+### 1.1 目的
+本書は総合テストの仕様と結果を記録する。
+
+## 2. テスト対象
+受注APIの全機能を対象とする。
+
+## 3. テスト方針
+自動テストを基本とする。
+
+## 4. テスト項目
+| テストID | 対象要件 | シナリオ | 前提条件 | 入力データ | 期待される出力 | 実行区分 |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| TC-001 | REQ-001 | 必須項目をすべて入力して受注を登録する | APIが起動している | customer=c1 | HTTP 201 とIDが返る | 自動 |
+| TC-002 | REQ-002 | 存在する受注IDで1件を照会する | 受注1件が登録済み | order_id=1 | HTTP 200 と該当1件が返る | 自動 |
+
+## 5. テスト実行結果
+### 5.2 結果詳細
+| テストID | 実行日時 | 検査結果 | 実際の出力・エラー | 備考 |
+| :--- | :--- | :--- | :--- | :--- |
+| TC-001 | 2026-01-01 | Pass | HTTP 201 | なし |
+| TC-002 | 2026-01-01 | Pass | HTTP 200 | なし |
+
+## 6. 総合判定と不具合報告
+### 6.2 総合判定
+**判定: Pass**
 """
 
 SW205_PROGRAM = """# SW205 ソフトウェアアーキテクチャ設計書
@@ -307,9 +340,9 @@ def build_agent_repo(base: Path) -> None:
     write(base, "tests/test_minutes_check.py", AGENT_TEST)
 
 
-def run(script: Path, base: Path):
+def run(script: Path, base: Path, command: str = "all"):
     proc = subprocess.run(
-        [sys.executable, str(script), "all", "--root", str(base), "--no-report"],
+        [sys.executable, str(script), command, "--root", str(base), "--no-report"],
         capture_output=True, text=True, encoding="utf-8", errors="replace",
     )
     return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
@@ -366,13 +399,50 @@ def main() -> int:
     else:
         failures.append("成果物パスの欠落を検出できない（exit={}）".format(rc_broken))
 
+    # --- 4. report は空の5〜6章を High にし、all は空のまま通る ---
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp) / "empty_report"
+        base.mkdir()
+        build_program_repo(base)
+        rc_all, _out_all = run(CHECK, base, "all")
+        rc_rep, out_rep = run(CHECK, base, "report")
+
+    print("\n=== [4] 空の5〜6章: all は 0、report は 1 ===")
+    print("  all exit={} （期待値: 0） / report exit={} （期待値: 1）".format(rc_all, rc_rep))
+    if rc_all != 0:
+        failures.append("空の5〜6章で all が High になる（report を all に混ぜてしまった）")
+    if rc_rep != 1:
+        failures.append("空の5〜6章で report が High にならない（exit={}）".format(rc_rep))
+        show_high(out_rep)
+    if rc_all == 0 and rc_rep == 1:
+        print("  判定: OK（Phase 2の空報告書を all は見逃し、report は検出する）")
+
+    # --- 5. 記入済み5〜6章で report が 0 ---
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp) / "filled_report"
+        base.mkdir()
+        build_program_repo(base)
+        write(base, "docs/artifacts/SWP6_ソフトウェア総合テスト仕様書・報告書.md", SWP6_REPORTED)
+        rc_filled, out_filled = run(CHECK, base, "report")
+        rc_all_filled, _ = run(CHECK, base, "all")
+
+    print("\n=== [5] 記入済み5〜6章: report は 0（all も 0） ===")
+    print("  report exit={} （期待値: 0） / all exit={} （期待値: 0）".format(rc_filled, rc_all_filled))
+    if rc_filled != 0:
+        failures.append("記入済み報告書で report が High になる（exit={}）".format(rc_filled))
+        show_high(out_filled)
+    if rc_all_filled != 0:
+        failures.append("記入済み報告書で all が壊れる（exit={}）".format(rc_all_filled))
+    if rc_filled == 0 and rc_all_filled == 0:
+        print("  判定: OK（計画表と結果表の取り違えなし）")
+
     print("\n" + "=" * 60)
     if failures:
         print("RESULT: NG")
         for f in failures:
             print("  - {}".format(f))
         return 1
-    print("RESULT: OK（従来経路 / 宣言パス経路 / 欠落検出 のすべてが期待どおり）")
+    print("RESULT: OK（従来経路 / 宣言パス経路 / 欠落検出 / report分離 のすべてが期待どおり）")
     return 0
 
 

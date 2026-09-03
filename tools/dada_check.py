@@ -14,11 +14,12 @@ DADA Process 機械チェッカ (dada_check.py)
     Python 3.8 以降の標準ライブラリのみ。外部依存なし。
 
 使い方:
-    python tools/dada_check.py all        # 全チェック（推奨）
+    python tools/dada_check.py all        # 全チェック（推奨。report は含まない）
     python tools/dada_check.py trace      # ID対応（REQ↔TC↔UNIT）のみ
     python tools/dada_check.py lint       # 文書の書き方（曖昧語・空欄等）のみ
     python tools/dada_check.py code       # ソースコードとの照合のみ
     python tools/dada_check.py status     # REV101/BUG101 の未解決件数のみ
+    python tools/dada_check.py report     # 総合テスト報告書（SWP6 5〜6章）の完成。Phase 4ゲート前のみ
 
     オプション:
       --root <path>   リポジトリルート（既定: 本スクリプトの親ディレクトリの親）
@@ -346,16 +347,65 @@ class Document:
         return ""
 
     def tc_table(self) -> tuple[list[str], list[tuple[int, list[str]]]]:
-        """SWP6のテスト項目表（テストID列を持つ最大の表）を返す。"""
+        """SWP6の計画側テスト項目表（テストIDかつ対象要件を持つ表）。
+
+        5.2の結果表もテストID列を持つため、対象要件の有無で計画表と区別する。
+        計画表が無い場合のみ、テストID列を持つ最大の表へフォールバックする。
+        """
+        best = ([], [])
+        fallback = ([], [])
+        for _, header, rows in iter_tables(self.lines, self.kinds):
+            if not header:
+                continue
+            has_tc = any("テストID" in h or "テスト ID" in h for h in header)
+            if not has_tc:
+                continue
+            data_rows = [(no, cells) for no, cells in rows
+                         if cells and ID_RE["TC"].search(cells[0] or "")]
+            has_req = any("対象要件" in h or "対象要求" in h for h in header)
+            if has_req and len(data_rows) >= len(best[1]):
+                best = (header, data_rows)
+            if len(data_rows) >= len(fallback[1]):
+                fallback = (header, data_rows)
+        return best if best[1] else fallback
+
+    def result_tc_table(self) -> tuple[list[str], list[tuple[int, list[str]]]]:
+        """SWP6の5.2結果表（テストIDかつ検査結果を持つ表）。"""
         best = ([], [])
         for _, header, rows in iter_tables(self.lines, self.kinds):
             if not header:
                 continue
-            if any("テストID" in h or "テスト ID" in h for h in header):
-                data_rows = [(no, cells) for no, cells in rows
-                             if cells and ID_RE["TC"].search(cells[0] or "")]
-                if len(data_rows) >= len(best[1]):
-                    best = (header, data_rows)
+            has_tc = any("テストID" in h or "テスト ID" in h for h in header)
+            has_res = any("検査結果" in h for h in header)
+            if not (has_tc and has_res):
+                continue
+            data_rows = [(no, cells) for no, cells in rows
+                         if cells and ID_RE["TC"].search(cells[0] or "")]
+            if len(data_rows) >= len(best[1]):
+                best = (header, data_rows)
+        return best
+
+    def ev_table(self, result: bool = False) -> tuple[list[str], list[tuple[int, list[str]]]]:
+        """評価セット定義表（入力プロンプト列）または5.3結果表（合格率列）。"""
+        best = ([], [])
+        for _, header, rows in iter_tables(self.lines, self.kinds):
+            if not header:
+                continue
+            has_ev = any("評価ID" in h for h in header)
+            if not has_ev:
+                continue
+            has_prompt = any("入力プロンプト" in h for h in header)
+            has_rate = any("合格率" in h for h in header)
+            if result and not has_rate:
+                continue
+            if not result and not has_prompt:
+                continue
+            data_rows = [(no, cells) for no, cells in rows
+                         if cells and re.search(r"\bEV-(?:\d{1,4}|EX)\b", cells[0] or "")]
+            data_rows = [(no, cells) for no, cells in data_rows
+                         if not re.search(r"\bEV-EX\b", cells[0] or "")]
+            if len(data_rows) >= len(best[1]):
+                best = (header, data_rows)
         return best
 
     def column(self, header: list[str], *names: str) -> int:
@@ -444,8 +494,8 @@ def check_trace(root: Path, docs: dict) -> Section:
                     else:
                         covered.setdefault(r, []).append(tc_id)
                 if 0 <= col_kind < len(cells) and not cells[col_kind]:
-                    sec.add(HIGH, loc, "実行区分（自動/手動）が未記入",
-                            "AIが実行するか人間が実施するかを明示する")
+                    sec.add(HIGH, loc, "実行区分（自動/手動/評価）が未記入",
+                            "自動（スクリプト）・手動（AIがツールで実施）・評価（評価セット）のいずれかを明示する")
                 if 0 <= col_exp < len(cells) and not cells[col_exp]:
                     sec.add(HIGH, loc, "期待される出力が空欄",
                             "SW105の検証条件から数値・具体値を転記する")
@@ -907,8 +957,141 @@ def check_status(root: Path) -> Section:
 
 
 # ---------------------------------------------------------------------------
-# 実行
+# チェック: 総合テスト報告書（Phase 4専用。all には含めない）
 # ---------------------------------------------------------------------------
+
+JUDGE_RE = re.compile(r"判定\s*[:：]\s*\**\s*(Pass|Fail)\b", re.IGNORECASE)
+RESULT_PASS_RE = re.compile(r"\bPass\b", re.IGNORECASE)
+RESULT_FAIL_RE = re.compile(r"\bFail\b", re.IGNORECASE)
+
+
+def _cell_pass_fail(cell: str) -> str | None:
+    """Return 'Pass', 'Fail', or None if empty/invalid (both or neither)."""
+    has_p = bool(RESULT_PASS_RE.search(cell or ""))
+    has_f = bool(RESULT_FAIL_RE.search(cell or ""))
+    if has_p and not has_f:
+        return "Pass"
+    if has_f and not has_p:
+        return "Fail"
+    return None
+
+
+def check_report(root: Path, docs: dict) -> Section:
+    """SWP6の5〜6章が、4章の全TCについて記入されているかを見る。
+
+    評価区分の試行回数・1回試行の禁止は `agent_def_check.py eval` が正である。
+    本チェックはSWP6内の転記欠落（5.3にEV-IDが無いこと）だけを見る。
+    """
+    sec = Section("5. 総合テスト報告書の完成（Phase 4専用）")
+    swp6 = docs.get("SWP6")
+    if swp6 is None:
+        sec.add(HIGH, "docs/artifacts", "SWP6 が未作成のため報告書を検証できない",
+                "Phase 4の前に計画承認済のSWP6が必要")
+        return sec
+
+    plan_header, plan_rows = swp6.tc_table()
+    res_header, res_rows = swp6.result_tc_table()
+    if not plan_rows:
+        sec.add(HIGH, swp6.rel, "4章のテスト項目表（対象要件列を持つ表）が見つからない",
+                "計画側のテスト項目をSWP6に残す")
+        return sec
+
+    plan_ids = []
+    for lineno, cells in plan_rows:
+        ids = normalize_id_list(cells[0], "TC")
+        if not ids or ids[0].endswith("-EX"):
+            continue
+        plan_ids.append((ids[0], lineno, cells))
+
+    res_col = swp6.column(res_header, "検査結果") if res_header else -1
+    res_map = {}
+    fail_found = False
+    for lineno, cells in res_rows:
+        ids = normalize_id_list(cells[0], "TC")
+        if not ids:
+            continue
+        pf = _cell_pass_fail(cells[res_col] if 0 <= res_col < len(cells) else "")
+        res_map[ids[0]] = (lineno, pf)
+        if pf == "Fail":
+            fail_found = True
+
+    if not res_rows:
+        sec.add(HIGH, swp6.rel, "5.2の結果表（検査結果列）が無い、またはTC-ID行が0件",
+                "Phase 4でAIが全TCの結果を5.2に記入する")
+
+    for tc_id, lineno, _cells in plan_ids:
+        loc = "{}:{} / {}".format(swp6.rel, lineno, tc_id)
+        if tc_id not in res_map:
+            sec.add(HIGH, loc, "4章のTC-IDが5.2の結果表に存在しない",
+                    "AIが当該テストを実施し、5.2に1行追記する")
+            continue
+        _rl, pf = res_map[tc_id]
+        if pf is None:
+            sec.add(HIGH, "{} / {}".format(swp6.rel, tc_id),
+                    "5.2の検査結果が Pass または Fail の一方になっていない",
+                    "プレースホルダ（Pass / Fail）のままにせず、実施結果を1つ書く")
+
+    # 6.2 総合判定
+    judge = None
+    for i, ln in enumerate(swp6.lines):
+        if swp6.kinds[i] != "text":
+            continue
+        if RESULT_PASS_RE.search(ln) and RESULT_FAIL_RE.search(ln):
+            continue  # 「判定: Pass / Fail」のプレースホルダ
+        m = JUDGE_RE.search(ln)
+        if m:
+            judge = m.group(1).capitalize()
+    if judge is None:
+        sec.add(HIGH, "{} / 6.2".format(swp6.rel),
+                "6.2の総合判定（判定: Pass または 判定: Fail）が未記入",
+                "3.1の基準と5章の結果からAIが総合判定を書く")
+    else:
+        eval_fail = False
+        _eh, ev_rows = swp6.ev_table(result=True)
+        ev_judge_col = swp6.column(_eh, "判定") if _eh else -1
+        for _lineno, cells in ev_rows:
+            cell = cells[ev_judge_col] if 0 <= ev_judge_col < len(cells) else ""
+            if "不合格" in cell:
+                eval_fail = True
+        if (fail_found or eval_fail) and judge == "Pass":
+            sec.add(HIGH, "{} / 6.2".format(swp6.rel),
+                    "5章にFailまたは評価不合格があるのに総合判定がPassである",
+                    "3.1の基準に合わせて判定をFailにするか、Fail原因を解消して再実施する")
+        if (not fail_found) and (not eval_fail) and plan_ids and judge == "Fail":
+            # すべての5.2がPassで評価も不合格なし
+            all_pass = plan_ids and all(
+                res_map.get(tc_id, (0, None))[1] == "Pass" for tc_id, _, _ in plan_ids)
+            if all_pass:
+                sec.add(HIGH, "{} / 6.2".format(swp6.rel),
+                        "5章がすべてPassなのに総合判定がFailである",
+                        "3.1の基準と矛盾しない判定にする")
+
+    # 評価IDの転記（試行回数の正は agent_def_check.py eval）
+    def_h, def_rows = swp6.ev_table(result=False)
+    _res_h, ev_res_rows = swp6.ev_table(result=True)
+    def_ids = []
+    for lineno, cells in def_rows:
+        m = re.search(r"\bEV-\d{1,4}\b", cells[0] or "")
+        if m:
+            def_ids.append((m.group(0), lineno))
+    res_ids = set()
+    for _, cells in ev_res_rows:
+        m = re.search(r"\bEV-\d{1,4}\b", cells[0] or "")
+        if m:
+            res_ids.add(m.group(0))
+    if def_ids:
+        sec.note("評価IDの試行回数・1回試行の禁止は agent_def_check.py eval が正。"
+                 "本チェックは5.3への転記欠落のみを見る。")
+        for evid, lineno in def_ids:
+            if evid not in res_ids:
+                sec.add(HIGH, "{}:{} / {}".format(swp6.rel, lineno, evid),
+                        "4.3の評価IDが5.3の結果表に存在しない",
+                        "eval_report.md の集計をSWP6の5.3へ転記する")
+
+    if plan_ids:
+        filled = sum(1 for tc_id, _, _ in plan_ids if res_map.get(tc_id, (0, None))[1] in ("Pass", "Fail"))
+        sec.note("報告書 TC結果: {}/{} 件が Pass または Fail".format(filled, len(plan_ids)))
+    return sec
 
 def load_docs(root: Path) -> dict:
     docs = {}
@@ -930,6 +1113,8 @@ def build_report(root: Path, command: str) -> tuple[str, str, dict]:
         sections.append(check_code(root, docs))
     if command in ("all", "status"):
         sections.append(check_status(root))
+    if command == "report":
+        sections.append(check_report(root, docs))
 
     totals = {HIGH: 0, MID: 0, CHECK: 0}
     for sec in sections:
@@ -963,7 +1148,7 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description="DADAプロセスの開発文書とコードを機械的に検証する。")
     parser.add_argument("command", nargs="?", default="all",
-                        choices=["all", "trace", "lint", "code", "status"])
+                        choices=["all", "trace", "lint", "code", "status", "report"])
     parser.add_argument("--root", default=None, help="リポジトリルート")
     parser.add_argument("--summary", action="store_true", help="サマリ1行のみ出力する")
     parser.add_argument("--no-report", action="store_true",

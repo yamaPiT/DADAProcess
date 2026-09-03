@@ -14,7 +14,7 @@ description: 開発文書（SW105/SWP6/SW205）とソースコードの機械的
 ## 発動条件 (Trigger)
 - 作成者スキル（`requirements-engineer` / `test-engineer` / `architect` / `programmer`）が「完了前の自己チェック」を行うとき。
 - レビュアースキル（`requirements-reviewer` / `test-reviewer` / `architecture-reviewer` / `code-reviewer`）がレビューを開始するとき。
-- 承認ゲートでProduct Ownerへ報告する直前。
+- 承認ゲートでProduct Ownerへ報告する直前。Phase 4では `all` のあとに `python tools/dada_check.py report` を実行する。
 
 ## 実行手順 (Mechanical How)
 
@@ -26,7 +26,7 @@ python tools/dada_check.py all
 ```
 
 - `python` が見つからない場合は `python3 tools/dada_check.py all`、次に `py -3 tools/dada_check.py all` を試す。
-- 特定のチェックだけ実行する場合の引数は `trace`（ID対応）/ `lint`（文書の書き方）/ `code`（コードとの対応）/ `status`（帳票の未解決）。
+- 特定のチェックだけ実行する場合の引数は `trace`（ID対応）/ `lint`（文書の書き方）/ `code`（コードとの対応）/ `status`（帳票の未解決）/ `report`（総合テスト報告書の完成。Phase 4のみ）。
 - 結果は標準出力に表示され、同じ内容が `docs/process/check_report.md` に保存される。
 
 ### Step 2: 結果を読む
@@ -42,9 +42,9 @@ DADA-CHECK: NG（High指摘あり） | High 3 / Mid 5 / 要確認 2 | 対象: SW
 | **Mid** | 品質を損なうが工程は進められる | 原則として解消する |
 | **要確認** | 機械では判定できない | 妥当性を自分で判断し、対応または「問題なし」の判断理由を述べる |
 
-**終了コードによる合否の受け取り（自律メタLoop型では必須）**
+**終了コードによる合否の受け取り（自律型では必須）**
 
-| 終了コード | 意味 | 実行モードが自律メタLoop型のときの扱い |
+| 終了コード | 意味 | 実行モードが自律型のときの扱い |
 | :---: | :--- | :--- |
 | `0` | High指摘なし | 他の条件（`.agents/AGENTS.md` 第10.3節）を満たせば次Phaseへ遷移してよい |
 | `1` | High指摘あり | **遷移不可**。作成者ペルソナで修正し、再実行する。2回連続で解消できない場合は停止して人間へ報告する |

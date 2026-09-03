@@ -67,7 +67,7 @@ AI時代の開発対象は2系統に分かれる。両者は同じ「コンピ�
 | 2 | **Routing**（分類・振り分け） | 入力の種類によって処理を切り替える必要がある | Phase 0のルーティング（①開発対象 ②実行モード ③変更スケール）。既定値へ落とす規則を必ず定める |
 | 3 | **Parallelization**（並列処理） | 独立な部分作業に分割できる（セクション分割）、または複数回の試行で信頼度を上げたい（投票） | Phase 4の依存のないユニットの並列実装（セクション分割）。評価セットのN回試行と多数決（投票） |
 | 4 | **Evaluator-Optimizer**（評価・改善ループ） | 明確な評価基準があり、反復で品質が上がる | 自己校正ループ（作成者⇄レビュアー、**上限2周**）＋ `tools/dada_check.py` による決定論的評価 |
-| 5 | **Orchestrator-Subagents**（司令塔と専門サブエージェント） | 部分課題が動的に決まる。専門性ごとに文脈を分離したい | モードA（オーケストレーター常駐型）。各Phaseを独立コンテキストのサブエージェントへ委譲し、引き継ぎは承認済み文書とサマリーのみに限る |
+| 5 | **Orchestrator-Subagents**（司令塔と専門サブエージェント） | 部分課題が動的に決まる。専門性ごとに文脈を分離したい | モードX（オーケストレーター常駐型。推奨）。各Phaseを独立コンテキストのサブエージェントへ委譲し、引き継ぎは承認済み文書とサマリーのみに限る |
 
 **パターン選択の指針**
 
@@ -128,7 +128,7 @@ AI時代の開発対象は2系統に分かれる。両者は同じ「コンピ�
 | :--- | :--- | :--- | :--- |
 | プログラムレイヤー | 単体テスト・スクリプト実行 | 決定論的 Pass/Fail（1回で確定） | **自動** |
 | 自然言語レイヤー | Eval Dataset（N回試行） | 合格率が閾値以上（許容範囲で判定） | **評価** |
-| 両レイヤーにまたがる体験・見た目 | 人間の目視・実機確認 | 人間の判断 | **手動** |
+| 両レイヤーにまたがるがスクリプト化しない確認 | AIがブラウザ・GUI等のツールで実施し、期待値と照合 | Pass/Fail | **手動**（実施者はAI。主観的検収はSWP6に書かず Phase 5） |
 
 ### 4.2 プログラムレイヤーの単体テスト仕様
 
@@ -246,7 +246,7 @@ docs/
 | `docs/templates/agent/phase1_agent_requirements_template.md` | Phase 1: エージェント要求仕様書のひな形 |
 | `docs/templates/agent/phase2_agent_eval_spec_template.md` | Phase 2: 二重評価仕様書のひな形 |
 | `docs/templates/agent/phase3_agent_design_template.md` | Phase 3: エージェント設計書のひな形 |
-| `docs/examples/prompts_usage.md` | 4つの使い方（P対話 / P自律 / A対話 / A自律）の起動プロンプト集 |
+| `docs/examples/prompts_usage.md` | 4つの使い方（P承認ゲート / P自律 / A承認ゲート / A自律）の起動プロンプト集 |
 | `docs/guidelines/asdoq_writing_rules.md` | 執筆ルール12箇条（エージェント定義の文書にも適用する） |
 | `.agents/AGENTS.md` 第9節・第10節 | 開発対象の判定と一貫性ルール／実行モードと権限委譲 |
 | Anthropic「Building Effective Agents」 | https://www.anthropic.com/research/building-effective-agents |

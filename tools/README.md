@@ -37,6 +37,7 @@ python tools/dada_check.py trace    # ID対応（REQ ↔ TC ↔ UNIT）
 python tools/dada_check.py lint     # 文書の書き方（曖昧語・指示語・空欄・TBD等）
 python tools/dada_check.py code     # ソースコードと設計・テストの対応
 python tools/dada_check.py status   # REV101 / BUG101 の未解決件数
+python tools/dada_check.py report   # 総合テスト報告書（SWP6 5〜6章）の完成。Phase 4のゲート前のみ。all には含まれない
 
 # サマリ1行だけ欲しいとき
 python tools/dada_check.py all --summary
@@ -58,6 +59,7 @@ python tools/dada_check.py all --summary
 | `lint` | 規範的記述（検証条件・期待値・責務等）に残った曖昧語・指示語、TBDの解消計画の欠落、表の空欄と列数不一致、スケルトンの残骸（【AIへの指示】・記入例ID・プレースホルダ）、コードブロックの閉じ忘れ、標準目次の章の欠落 |
 | `code` | 実装されていないUNIT-ID（またはヘッダのID記載漏れ）、宣言された成果物パスの不在、「自動」区分なのにテストコードがないTC-ID、skip・onlyによるテストの無効化 |
 | `status` | REV101・BUG101に残った未解決行 |
+| `report` | 4章の各TC-IDが5.2に無い、検査結果が Pass/Fail でない、6.2の総合判定が未記入または5章と矛盾、4.3のEV-IDが5.3に未転記。**Phase 4のゲート前に実行する。`all` には含まれない**（Phase 2の空5〜6章を欠陥にしないため） |
 
 ### 重要度の意味
 
@@ -157,4 +159,4 @@ Pythonが利用できない環境では、各スキルに記述された**手動
 ツールを実行できなかった場合は、その事実を承認ゲートの報告に1行で明記してください（実行したふりをしてはいけません）。
 
 > [!WARNING]
-> **自律メタLoopモードでは、機械チェックの実行が自律遷移の必須条件です**（`.agents/AGENTS.md` 第10.3節）。Pythonが使えず終了コードを取得できない場合は、自律遷移の条件を満たせないため、**対話型として人間の承認を求めてください**。
+> **自律型では、機械チェックの実行が自律遷移の必須条件です**（`.agents/AGENTS.md` 第10.3節）。Pythonが使えず終了コードを取得できない場合は、自律遷移の条件を満たせないため、**承認ゲート型として人間の承認を求めてください**。
