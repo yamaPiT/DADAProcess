@@ -32,6 +32,7 @@
 | 1 | 2026-09-04 14:12 | Phase 1: 要求定義 | Phase 2: 総合テスト仕様策定 | 0 / DADA-CHECK: OK \| High 0 / Mid 0 / 要確認 0 \| 対象: SW105 | APPROVED / 0件 | PROCEED | 6条件すべて充足。全REQにレイヤー明記、自然言語AC定義済、必須停止条件非該当 |
 | 2 | 2026-09-04 14:20 | Phase 2: 総合テスト仕様策定 | Phase 3: アーキテクチャ設計 | 0 / DADA-CHECK: OK \| High 0 / Mid 0 / 要確認 0 \| 対象: SW105, SWP6 | APPROVED / 0件 | PROCEED | 6条件すべて充足。REQ↔TC 100%網羅、全評価TCにEV-ID/試行回数/合格率定義済、必須停止条件非該当 |
 | 3 | 2026-09-04 14:36 | Phase 3: アーキテクチャ設計 | Phase 4: 実装・総合テスト報告 | 0 / DADA-CHECK: OK \| High 0 / Mid 0 / 要確認 1 \| 対象: SW105, SW205, SWP6 | APPROVED / 0件 | PROCEED | 6条件すべて充足。REQ↔UNIT 100%網羅、全UNIT成果物パス・ACI仕様・ポカヨケ定義済、必須停止条件非該当 |
+| 4 | 2026-09-04 14:44 | Phase 4: 実装・総合テスト報告 | Phase 5: 人間による評価と要求見直し | 0 / DADA-CHECK: OK \| High 0 / Mid 0 / 要確認 0 \| 対象: SW105, SW205, SWP6 | APPROVED / 0件 | PROCEED | 6条件すべて充足。全4ユニット実装完、単体11件Pass、総合自動10件Pass、評価セット9件100%Pass、報告書締結、Phase 5人間評価へ引き渡し |
 
 ## 停止時の申し送り
 
