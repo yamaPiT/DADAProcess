@@ -824,7 +824,8 @@ def check_code(root: Path, docs: dict) -> Section:
     sw205_doc = docs.get("SW205")
     declared = declared_artifact_units(root, sw205_doc) if sw205_doc is not None else []
     files = list(iter_source_files(root))
-    if not files and not declared:
+    existing_declared = [d for d in declared if (root / d["path"]).resolve().is_file()]
+    if not files and not existing_declared:
         sec.note("ソースコードが検出されなかった（Phase 4 開始前であれば正常）。")
         return sec
     sec.note("走査したソースファイル: {} 件".format(len(files)))
