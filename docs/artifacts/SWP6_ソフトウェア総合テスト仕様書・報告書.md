@@ -128,6 +128,7 @@ Antigravity 2.0の対話環境において、エージェント定義を起動�
 - 対象AIエージェント製品: Antigravity 2.0
 - 使用モデル: Gemini 2.5 Pro
 - 実行OS: Windows (Python 3.13)
+- 単体テストフレームワーク: Python標準ライブラリ `unittest`（SW205 ADR-002準拠）
 - テスト実施者: AIエージェント（Programmer）
 
 ### 5.2 結果詳細
