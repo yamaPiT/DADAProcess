@@ -25,6 +25,7 @@ TARGETS = [
     "docs/process/autoloop_log.md",
     "docs/process/eval_report.md",
     "tools/README.md",
+    "scratch/README.md",
 ]
 TARGETS += [str(p.relative_to(REPO)).replace("\\", "/")
             for p in sorted((REPO / ".agents/skills").glob("*/SKILL.md"))]

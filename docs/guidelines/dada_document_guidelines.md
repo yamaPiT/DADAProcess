@@ -1,10 +1,10 @@
 ---
 title: DADAプロセス ドキュメント作成ガイドライン
 file_path: docs/guidelines/dada_document_guidelines.md
-version: 3.0
-date: 2026-05-06
+version: 3.1
+date: 2026-09-06
 author: Product Owner
-description: DADA (Document and Agent Driven Agile) プロセスにおいて、AIエージェントが開発ドキュメント（SRS、アーキテクチャ設計書、統合テスト仕様書）を作成・更新するための軽量なルールブック。
+description: DADA (Document and Agent Driven Agile) プロセスにおいて、AIエージェントが開発ドキュメント（SRS、アーキテクチャ設計書、総合テスト仕様書）を作成・更新するための軽量なルールブック。
 ---
 
 # DADAプロセス ドキュメント作成ガイドライン
