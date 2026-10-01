@@ -1043,7 +1043,7 @@ Antigravity v2のカスタマイズ体系（AGENTS.md + Agent Skills）に準拠
     * これは「P開発自律型 / A開発自律型」（工程を人の確認なしで進める）とは別の設定です。前者は手順の粒度、後者は工程の関門の話です。
 
 12. **Antigravity以外のエージェント開発/実行ツールへ移植する**
-    * いちばん簡単なのは、使いたいツールでこのリポジトリを開き、チャットに「このリポジトリを ○○ 用にカスタマイズして」と頼むことです。手順の全文、Codex / Claude Code / Cursor / GitHub Copilot ごとの置き場所、終わったあとの確認は [🔄 他のツールで使う](#他のツールで使う) です。置き場所や設定名は **参考情報** であり、ツールのバージョンや環境によって異なる場合があります。
+    * いちばん簡単なのは、使いたいツールでこのリポジトリを開き、チャットにプロンプトを貼って設定ファイルを自動生成させることです。具体的なプロンプトや各ツールの設定の読み替えは [🔄 他のツールで使う](#他のツールで使う) を参照してください。
 
 13. **自社で定義した文書フォーマットを使う**
     * 要求仕様書・設計書・テスト仕様書などのひな形を Markdown にし、`docs/templates/` に置きます。置き方の説明は [`docs/templates/README.md`](docs/templates/README.md) にあります。
@@ -1076,7 +1076,7 @@ Antigravity v2のカスタマイズ体系（AGENTS.md + Agent Skills）に準拠
 このリポジトリは **Antigravity** を主対象に作られています。DADAの工程・開発文書（`docs/`）・点検ツール（`tools/`）は、どのツールでも同じです。変わるのは、**そのツールが「ルール」と「スキル」を探すフォルダ**だけです。
 
 > [!NOTE]
-> この章の置き場所・ファイル名・設定名・手順は **参考情報** です。各ツールの仕様は、**バージョンや環境**（IDE / CLI / クラウド、組織のポリシー）によって異なる場合があります。作業の直前に、各ツールの公式ドキュメントで最新の置き場所を確認してください。ここに書いた内容と違う場合は、公式の方が正です。合わないときは、下の [いちばん簡単なやり方](#いちばん簡単なやり方チャットに貼る) で、使っているツールに「このリポジトリを ○○ 用にカスタマイズして」と頼む方が、その時点の仕様に合いやすいです。
+> この章の設定ファイル名や手順は **参考情報** です。各ツールの仕様は、**バージョンや環境**（IDE / CLI / クラウド、組織のポリシー）によって更新される場合があります。下の [移行方法（チャットに貼るだけ）](#移行方法チャットに貼るだけ) のように、使っているツール自身に「自環境に合わせてカスタマイズして」と依頼すれば、その時点の最新仕様に自動追従してセットアップできます。
 
 次の4つへの置き方を説明します。
 
@@ -1102,202 +1102,81 @@ Antigravity は、この `.agents/` を最初から読みます。Codex / Claude
 
 おすすめは、元の `.agents/` はそのまま残し、案内役のファイルを1つ足す方法です。ルールやスキルを二重に書き写すと、あとから直したときにずれます。
 
-### いちばん簡単なやり方（チャットに貼る）
+<a id="移行方法チャットに貼るだけ"></a>
+### 移行方法（チャットに貼るだけ）
+
+各ツール（Claude Code, Cursor, GitHub Copilot, Codex 等）のAIは、「自ツールがどのファイルをルールやスキルとして読み込むか」を熟知しています。そのため、手動でフォルダやファイルを作るより、**使いたいツール自身に設定ファイルを作らせる**のが最も安全で確実です。
 
 1. 使いたいツールで、このリポジトリのフォルダを開きます。
-2. チャットに、次をコピーして貼ります。`（ツール名）` だけ、Codex / Claude Code / Cursor / GitHub Copilot のどれかに変えてください。
+2. ファイルの作成・編集が可能なチャット（Agentモード / Composer等）を開き、以下をコピーして送信します。
 
 ```text
-このリポジトリを（ツール名）用にカスタマイズしてください。
+このリポジトリはAntigravity 2.0向けに設計されたDADA（Document-and-Agent-Driven Agile）プロセスの資産です。
 
-やってほしいこと:
-- このツールが最初に読む場所へ、DADAのルールとスキルへの案内を置いてください。
-- ルールの本文は .agents/AGENTS.md、スキルの本文は .agents/skills/ のままにしてください（コピーして別内容にしない）。
-- DADAプロセスの工程、docs/ の開発文書、tools/ の点検ツールは変えないでください。
-- 終わったら、どのファイルを追加・変更したかを一覧で教えてください。
+【指示】
+既存のAntigravity用資産（.agents/、docs/、tools/ 等）は一切変更・削除せずそのまま維持した上で、
+あなたが動作しているこの開発環境（Cursor / Claude Code / GitHub Copilot / Codex 等）でDADAプロセスが正しく動作するように、必要な設定ファイル（ルール・スキル定義）を新規作成・カスタマイズしてください。
+
+【厳守要件】
+1. コアロジックの重複防止:
+   ルール本文やスキル定義を丸ごと再作成しないでください。各ツールの設定ファイルからは、既存の「.agents/AGENTS.md」および「.agents/skills/」を参照（インポート・案内）する形にしてください。
+2. 資産の整合性保護:
+   「docs/」配下の開発成果物・テンプレート、および「tools/」配下の点検スクリプトは変更しないでください。
+3. 完了報告:
+   新規作成した設定ファイルの一覧と、この環境でDADAプロセスを起動するための手順（新しいチャットを開く、権限設定を行う等）を簡潔に報告してください。
 ```
 
-3. AIがファイルを置いたら、次の [終わったら確認すること](#カスタマイズのあと) を見て、いつもどおり開発を始めます。
+3. AIが必要な案内ファイル（例：Claude Codeなら `CLAUDE.md`、Cursorならリポジトリ直下の `AGENTS.md` や `.cursor/rules/`、GitHub Copilotなら `.github/copilot-instructions.md` など）を自動生成します。
 
-フォルダの操作に慣れている人は、下のツール別手順を自分で行っても構いません。
+> [!TIP]
+> **生成される案内ファイルの主な場所（参考）**
+> - **Codex**: リポジトリ直下の `AGENTS.md`
+> - **Claude Code**: リポジトリ直下の `CLAUDE.md`（または `.claude/CLAUDE.md`）
+> - **Cursor**: リポジトリ直下の `AGENTS.md`、または `.cursor/rules/`
+> - **GitHub Copilot**: `.github/copilot-instructions.md`
 
-### ツール別：何をどこに置くか
+---
 
-#### Codex（OpenAI）
+### 🔧 Antigravityの設定の読み替え
 
-Codex は、リポジトリの一番上にある **`AGENTS.md`** をルールとして読みます。スキルは、もともと **`.agents/skills/`** を見るため、スキル用のコピーは不要なことが多いです。
+[🔧 Antigravityの設定](#antigravityの設定) に書かれている各項目は、お使いのツールに合わせて以下のように読み替えて設定してください。
 
-1. リポジトリの一番上（`.agents` フォルダと同じ階層）に、`AGENTS.md` というファイルを新規作成します。
-2. 中身は次で足ります。
-
-```markdown
-# DADA Process（Codex 用の案内）
-
-このプロジェクトのルール本文は `.agents/AGENTS.md` です。作業を始める前に必ずそのファイルを読み、以降はそれに従ってください。
-
-スキルは `.agents/skills/` にあります。ソフトウェアの新規開発・機能追加・修正・バグ対応では、必ずスキル `dada-process`（`.agents/skills/dada-process/SKILL.md`）を読んでから進めてください。
-```
-
-3. Codex を再起動するか、フォルダを開き直します。
-4. チャットに `DADAプロセスで開発を開始してください。` と、作りたいものの概要を書きます。
-
-スキルが認識されないときは、Codex の設定で Skills が有効かを確認してください。公式の説明は [Customization（Codex）](https://developers.openai.com/codex/concepts/customization) と [AGENTS.md](https://developers.openai.com/codex/guides/agents-md) です。
-
-#### Claude Code（Anthropic）
-
-Claude Code は、ルールとして **`CLAUDE.md`**（リポジトリの一番上、または `.claude/CLAUDE.md`）を読みます。スキルは **`.claude/skills/`** を見ます。`.agents/skills/` は自動では拾わないことが多いので、案内に「スキルは `.agents/skills/` を読む」と書くか、スキルフォルダを `.claude/skills/` へコピー（またはジャンクション）します。
-
-**案内だけ置く方法（推奨）**
-
-1. リポジトリの一番上に `CLAUDE.md` を新規作成します。
-2. 中身は次で足ります。
-
-```markdown
-# DADA Process（Claude Code 用の案内）
-
-このプロジェクトのルール本文は `.agents/AGENTS.md` です。会話の最初に必ずそのファイルを読み、以降はそれに従ってください。
-
-スキルは `.agents/skills/` にあります。ソフトウェアの新規開発・機能追加・修正・バグ対応では、必ず `.agents/skills/dada-process/SKILL.md` を読んでから進めてください。各工程では、そこに書かれたペルソナスキル（同じ `.agents/skills/` 配下）を読んでください。
-```
-
-3. Claude Code でフォルダを開き直します。
-4. `DADAプロセスで開発を開始してください。` で起動します。
-
-**スキルを Claude Code のフォルダにも置きたいとき**
-
-自動でスキル一覧に出したい場合は、`.agents/skills/` の中身を `.claude/skills/` へコピーします。本文は `.agents/` 側を正とし、コピーを別内容にしないでください。Windows の例:
-
-```powershell
-Copy-Item -Recurse .agents\skills .claude\skills
-```
-
-同じフォルダを二重に持たずに済む方法（上級者向け）は、ジャンクションです。
-
-```text
-mklink /J .claude\skills .agents\skills
-```
-
-公式の説明は [Claude Code のメモリ（CLAUDE.md）](https://code.claude.com/docs/en/memory) と [Skills](https://code.claude.com/docs/en/skills) です。
-
-#### Cursor（SpaceXAI）
-
-Cursor は、ルールとしてリポジトリ一番上の **`AGENTS.md`**（または `.cursor/rules/` の `.mdc`）を読みます。スキルは **`.cursor/skills/`** に加え、**`.agents/skills/` も読む**ことが多いです。
-
-1. リポジトリの一番上に `AGENTS.md` を新規作成します（Codex と同じ案内文で構いません）。
-
-```markdown
-# DADA Process（Cursor 用の案内）
-
-このプロジェクトのルール本文は `.agents/AGENTS.md` です。作業を始める前に必ずそのファイルを読み、以降はそれに従ってください。
-
-スキルは `.agents/skills/` にあります。ソフトウェアの新規開発・機能追加・修正・バグ対応では、必ずスキル `dada-process`（`.agents/skills/dada-process/SKILL.md`）を読んでから進めてください。
-```
-
-2. Cursor でフォルダを開き直します。
-3. `DADAプロセスで開発を開始してください。` で起動します。
-
-`.agents/AGENTS.md` がすでにワークスペースルールとして効いている場合は、案内ファイルを足さなくても動くことがあります。効いていないときだけ、上の `AGENTS.md` を置いてください。
-
-スキルを Cursor 専用フォルダにも置きたいときは `.cursor/skills/` へコピーしますが、通常は `.agents/skills/` のままで足ります。公式の説明は [Cursor の Rules](https://cursor.com/docs/rules) と [Skills](https://cursor.com/help/customization/skills) です。
-
-<a id="github-copilot"></a>
-#### GitHub Copilot（GitHub / Microsoft）
-
-GitHub Copilot は、ルールとして **`.github/copilot-instructions.md`**（リポジトリ全体にいつも効く）と、一番上の **`AGENTS.md`** を読みます。スキルは **`.github/skills/`** に加え、**`.agents/skills/` も公式に読む**ため、スキルのコピーは不要です。
-
-向いているのは **VS Code の Agent モード** と **GitHub Copilot CLI** です。Visual Studio や JetBrains IDE の Agent モードでも、同じ案内ファイルが使えます。コード補完だけ（Tab 補完）や、チャットの **Ask モード** ではファイルを書く工程が動かないので、DADAプロセスは始まりません。
-
-> [!NOTE]
-> GitHub.com 上のクラウドエージェント（Issue から PR を自動作成する使い方）は、途中で人が書類を読んで承認する使い方（承認ゲート型）には向きません。DADAはチャットで工程を止める想定です。
-
-**案内だけ置く方法（推奨）**
-
-1. `.github` フォルダがなければ作り、その中に `copilot-instructions.md` を新規作成します。
-2. 中身は次で足ります。
-
-```markdown
-# DADA Process（GitHub Copilot 用の案内）
-
-このプロジェクトのルール本文は `.agents/AGENTS.md` です。作業を始める前に必ずそのファイルを読み、以降はそれに従ってください。
-
-スキルは `.agents/skills/` にあります。ソフトウェアの新規開発・機能追加・修正・バグ対応では、必ずスキル `dada-process`（`.agents/skills/dada-process/SKILL.md`）を読んでから進めてください。各工程では、そこに書かれたペルソナスキル（同じ `.agents/skills/` 配下）を読んでください。
-```
-
-3. VS Code でフォルダを開き、Copilot Chat を **Agent** モードにします。または、ターミナルで GitHub Copilot CLI を起動します。
-4. `DADAプロセスで開発を開始してください。` で起動します。
-
-スキルが認識されないときは、VS Code のチャットで `/skills` を入力するか、Copilot CLI で `/skills list` を実行し、`dada-process` が出るかを確認してください。フォルダを開き直すか、CLI なら `/skills reload` も試してください。
-
-一番上に `AGENTS.md` を置く方法（Codex / Cursor と同じ案内文）でも、Copilot のコーディングエージェントは読みます。VS Code の Copilot Chat では、**`.github/copilot-instructions.md` の方が確実**です。両方置く場合も、本文は `.agents/AGENTS.md` を指す案内だけにしてください。
-
-**スキルを Copilot 専用フォルダにも置きたいとき**
-
-自動でスキル一覧に出したい場合は、`.agents/skills/` の中身を `.github/skills/` へコピーします。本文は `.agents/` 側を正とし、コピーを別内容にしないでください。通常は `.agents/skills/` のままで足ります。Windows の例:
-
-```powershell
-Copy-Item -Recurse .agents\skills .github\skills
-```
-
-**P開発自律型 / A開発自律型** で、コマンド実行の確認ダイアログが出て止まるとき:
-
-| 使う場所 | 確認を外す方法 |
+| Antigravityでの設定項目 | 他のツールでの読み替え・設定方法 |
 | :--- | :--- |
-| **VS Code** | チャット入力の権限ピッカーで **Bypass Approvals** または **Autopilot**。ターミナルだけ許可するなら、設定 `chat.tools.terminal.autoApprove` に `python` と `git` を足す |
-| **Copilot CLI** | セッション中の `/allow-all`（起動時なら `--allow-all-tools`）。作業ブランチを切ってから使う |
+| **自動実行ポリシー**<br>（自律型での確認ダイアログの解除） | コマンド実行やファイル更新時の確認ダイアログを外し、自律動作させる設定です。<br>・**VS Code (Copilot)**: チャットの権限ピッカーで「Bypass Approvals」または「Autopilot」を選択。<br>・**GitHub Copilot CLI**: 起動時オプション `--allow-all-tools`、またはセッション中に `/allow-all`。<br>・**Claude Code / Cursor / Codex**: 設定画面やCLIオプションで、ターミナル実行・ファイル書き込みの自動許可（Auto-approve等）を有効化。 |
+| **Global Rules（基本法）**<br>（ユーザーとAIの名前、安全基準） | 全プロジェクト共通の個人設定です。<br>・**Codex**: `~/.codex/` 配下のグローバル設定<br>・**Claude Code**: `~/.claude/` 配下のグローバル指示<br>・**Cursor**: Cursorの設定（Settings > Rules for AI）<br>・**GitHub Copilot**: VS Codeのユーザー設定、または `~/.copilot/` |
+| **context7 MCPサーバー**<br>（最新ドキュメントの自律参照） | ツールがMCP（Model Context Protocol）に対応している場合（Claude Code, Cursor等）、各ツールのMCP設定ファイルに `context7` の設定を追加してください。 |
+| **動作モード（サブエージェント）** | Antigravity 2.0 以外の環境では、ツールが工程ごとにサブエージェントを自動生成できない場合があります。その場合は「人間が新しいチャットを開く」か、「同一セッション内での論理リセット」として進行します（[サブエージェントの作り方](#サブエージェントの作り方) 参照）。 |
 
-公式の説明は [リポジトリのカスタム指示](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions)、[Agent skills](https://docs.github.com/en/copilot/concepts/agents/about-agent-skills)、[VS Code の Agent Skills](https://code.visualstudio.com/docs/agent-customization/agent-skills) です。
+---
 
-### 早見表
+### 🚀 開発の進め方
 
-| | **ルール（いつも効く）** | **スキル（必要なとき読む）** | このリポジトリで足すもの（推奨） |
-| :--- | :--- | :--- | :--- |
-| **Antigravity**（標準） | `.agents/AGENTS.md` | `.agents/skills/` | 何も足さない |
-| **Codex** | リポジトリ一番上の `AGENTS.md` | `.agents/skills/` | 一番上に案内の `AGENTS.md` |
-| **Claude Code** | `CLAUDE.md` または `.claude/CLAUDE.md` | `.claude/skills/`（自動発見）。本文は `.agents/skills/` を読むよう案内する | 一番上に案内の `CLAUDE.md` |
-| **Cursor** | リポジトリ一番上の `AGENTS.md`、または `.cursor/rules/` | `.agents/skills/` および `.cursor/skills/` | 一番上に案内の `AGENTS.md`（未設定のとき） |
-| **GitHub Copilot** | `.github/copilot-instructions.md`、および一番上の `AGENTS.md` | `.agents/skills/`（公式対応）。必要なら `.github/skills/` | `.github/copilot-instructions.md` に案内 |
+設定ファイルの配置が完了したら、環境の準備は完了です。
 
-個人用の置き場所（`~/.codex/`、`~/.claude/`、`~/.cursor/`、`~/.copilot/`）は、このリポジトリ専用ではなく自分の全プロジェクトに効きます。DADAはこのリポジトリに閉じたいので、**プロジェクト内のファイル**に案内を置いてください。
+これ以降の具体的な開発の進め方については、**[使い方 Step 3: プロジェクトを開く（環境の準備）](#step-3-プロジェクトを開く環境の準備)** へお進みください。
 
-<a id="カスタマイズのあと"></a>
-### 終わったら確認すること
+> [!IMPORTANT]
+> **ツール名の読み替えについて**  
+> 以降のドキュメント（Step 3 〜 Step 5、および [4つの使い方](#4つの使い方何を作るか--どう進めるか) 等）では説明の便宜上「Antigravity」を基準に記載していますが、**「Antigravity」と書かれている部分を、ご自身がお使いのツール名（Cursor / Claude Code / GitHub Copilot / Codex 等）に読み替えて**そのまま進めてください。
 
-1. 案内ファイル（`AGENTS.md`、`CLAUDE.md`、または `.github/copilot-instructions.md`）が、上表の場所にある。
-2. [`.agents/AGENTS.md`](.agents/AGENTS.md) と [`.agents/skills/`](.agents/skills/) が、元の場所に残っている。
-3. `docs/` と `tools/` を消したり、中身をツール向けに書き換えていない。
-4. チャットに次を書いて、DADAが起動するか見る。
+---
 
-```text
-DADAプロセスで開発を開始してください。
-（作りたいものの概要）
-```
-
-起動に成功すると、AIは「何を作るか・どう進めるか・作業量」を宣言し、応答の末尾に進行表示（`[DADA | Phase …]`）を付けます。
-
-### 変えてはいけないもの・読み替えるもの
+### 変えてはいけないもの
 
 | 触らない | 理由 |
 | :--- | :--- |
-| `docs/` の工程・ひな形・ガイドライン | DADAの本体。ツールが変わっても同じ |
-| `tools/dada_check.py` など点検ツール | 同じくツール非依存 |
-| `.agents/` の本文を、案内用に別内容へ書き換えること | ずれの原因になる。案内ファイルから参照する |
-
-| ツールごとに読み替える | 例 |
-| :--- | :--- |
-| Antigravity 2.0 専用の `/goal` や `/grill-me` | 先方に同じ意味のコマンドがあればそれを使う。なければ使わない |
-| 全プロジェクト共通の設定（Antigravity では `~/.gemini/...`） | Codex は `~/.codex/`、Claude Code は `~/.claude/`、Cursor は Cursor の Settings、GitHub Copilot は VS Code の Settings または `~/.copilot/` |
-| サブエージェントをツールが自動作成できるか | 開いたツールの制約で決まる。[サブエージェントの作り方](#サブエージェントの作り方) と同じ考え方 |
-
-P開発自律型 / A開発自律型で確認ダイアログが出て止まる場合の設定名は、ツールごとに違います。Antigravity での手順は [自動実行ポリシー](#自動実行ポリシー) です。GitHub Copilot での手順は [GitHub Copilot](#github-copilot) の表（VS Code の Bypass Approvals / Autopilot、CLI の `/allow-all`）です。他ツールでは「コマンド実行やファイル更新のたびに人間確認しない」設定を、その製品の画面で探してください。
+| `docs/` の工程・ひな形・ガイドライン | DADAの本体。ツールが変わっても共通です |
+| `tools/dada_check.py` など点検ツール | ツール非依存のPythonスクリプトです |
+| `.agents/` の本文を書き換えること | ずれの原因になります。他ツールの設定ファイルからは参照（インポート）のみ行います |
 
 ### うまくいかないとき
 
 | 症状 | まず見ること |
 | :--- | :--- |
-| 開発を頼んでも、DADAの工程に入らない | 案内ファイルから `.agents/AGENTS.md` と `dada-process` を読む指示があるか。フォルダを開き直したか。GitHub Copilot ならチャットが **Agent** モードか（Ask モードでは工程が始まらない） |
-| スキルが無いと言われる | スキル本文が `.agents/skills/` に残っているか。Claude Code なら案内にそのパスを書いたか。GitHub Copilot なら `/skills` または `/skills list` で `dada-process` が出るか |
-| ルールが効いていない | ツールが見るファイル名を、上表の場所に置いたか（`.agents` の中の `AGENTS.md` だけだと、ツールによっては見ない）。GitHub Copilot なら `.github/copilot-instructions.md` があるか |
-| 点検ツールが動かない | これは移植の問題ではありません。ターミナルで `python --version` が通るかを見てください |
+| 開発を頼んでもDADAの工程に入らない | 生成された案内ファイルから `.agents/AGENTS.md` と `dada-process` を読む指示があるか確認してください。フォルダの開き直しや、GitHub Copilotならチャットが **Agent** モードになっているかを確認してください。 |
+| スキルが無いと言われる | スキル本文が `.agents/skills/` に残っているか確認してください。GitHub Copilot なら `/skills` または `/skills list` で `dada-process` が認識されているか確認してください。 |
+| 点検ツールが動かない | 移植の問題ではなく、環境のPythonの問題です。ターミナルで `python --version`（Python 3.8以降）が通るかを確認してください。 |
 
 ---
 
