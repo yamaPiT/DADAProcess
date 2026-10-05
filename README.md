@@ -551,9 +551,11 @@ graph TD
     class ReqDoc,ArchDoc,ProgDoc,TestDoc,ReportDoc doc;
 ```
 
-### ⏩ フロー図：P開発自律型（プログラムを一気に完成まで）
+### ⏩ フロー図：自律型（P開発自律型 / A開発自律型）
 
-各段階の終わりの関門が、人の承認から**自律ゲート**（点検ツールが合格 ＋ 自己レビューが問題なし）に置き換わります。止まるときは赤枠で人が判断します。**最後の評価（Phase 5）は、必ず人**が行います。判断の根拠は `docs/process/autoloop_log.md` に1行ずつ残ります。
+各段階の終わりの関門が、人の承認から**自律ゲート**（点検ツールが合格 ＋ 自己レビューが問題なし）に置き換わります。止まるときは赤枠で人が判断（HALT）します。**最後の評価（Phase 5）は、必ず人**が行います。判断の根拠は `docs/process/autoloop_log.md` に1行ずつ残ります。
+
+**A開発自律型**も工程の骨格は同じです。Phase 4において、ソースコードのデバッグに加えて手順書の振る舞い採点（評価セットの試行）とツール点検（`agent_def_check.py`）が自律ゲートの通過条件に加わります。
 
 ```mermaid
 %%{init: {"flowchart": {"htmlLabels": false, "wrappingWidth": 999}}}%%
@@ -593,8 +595,8 @@ graph TD
 
     subgraph P4 ["Phase 4 実装と報告"]
         Gate3 -->|PROCEED| Impl["Programmer"]
-        Impl --- ProgDoc[("コード")]
-        Impl --> ImplLoop["デバッグ"]
+        Impl --- ProgDoc[("コード / スキル等")]
+        Impl --> ImplLoop["デバッグ / 評価セット"]
         ImplLoop -->|失敗| Impl
         ImplLoop -->|合格| SysTest["総合テスト実施"]
         SysTest --- ReportDoc[("SWP6 報告書")]
@@ -622,81 +624,6 @@ graph TD
     class UserReq,Halt1,Halt2,Halt3,Halt4,Eval1,Eval2 human;
     class ReqChk,TestChk,ArchChk,CodeChk tool;
     class ReqDoc,ArchDoc,ProgDoc,TestDoc,ReportDoc,AutoLog doc;
-    class Gate1,Gate2,Gate3,Gate4 gate;
-```
-
-### 🧩 フロー図：A開発自律型（エージェント定義を一気に完成まで）
-
-P開発自律型と同じ骨格です。追加されるのは、**振る舞いの採点**（評価セットを何回も試す）と、手順書と道具の食い違いを見る点検（`agent_def_check.py`）です。採点が合格ラインに届かないと、自律ゲートは通りません。
-
-```mermaid
-%%{init: {"flowchart": {"htmlLabels": false, "wrappingWidth": 999}}}%%
-graph TD
-    Start(["開始"]) --> UserReq["要求アイデア"]
-
-    subgraph P1 ["Phase 1 要求定義"]
-        UserReq --> Req["Requirements Engineer"]
-        Req --- ReqDoc[("SW105")]
-        Req --> ReqChk["機械チェック"]
-        ReqChk --> ReqRev["自己レビュー"]
-        ReqRev --> Gate1{"自律ゲート"}
-        Gate1 -->|HALT| Halt1["人間へ判断"]
-        Halt1 --> Req
-    end
-
-    subgraph P2 ["Phase 2 二重評価仕様"]
-        Gate1 -->|PROCEED| TestPlan["Test Engineer"]
-        TestPlan --- TestDoc[("SWP6")]
-        TestPlan --> TestChk["機械チェック"]
-        TestChk --> TestRev["自己レビュー"]
-        TestRev --> Gate2{"自律ゲート"}
-        Gate2 -->|HALT| Halt2["人間へ判断"]
-        Halt2 --> TestPlan
-    end
-    TestPlan -.->|差し戻し| Req
-
-    subgraph P3 ["Phase 3 エージェント設計"]
-        Gate2 -->|PROCEED| Arch["Architect"]
-        Arch --- ArchDoc[("SW205")]
-        Arch --> ArchChk["機械チェック"]
-        ArchChk --> ArchRev["自己レビュー"]
-        ArchRev --> Gate3{"自律ゲート"}
-        Gate3 -->|HALT| Halt3["人間へ判断"]
-        Halt3 --> Arch
-    end
-
-    subgraph P4 ["Phase 4 実装と報告"]
-        Gate3 -->|PROCEED| Impl["Programmer"]
-        Impl --- SkillDoc[("SKILL.md")]
-        Impl --- ToolDoc[("tools")]
-        Impl --> EvalRun["評価セット実施"]
-        EvalRun --- EvalDoc[("eval_report.md")]
-        EvalRun --> SysTest["総合テスト実施"]
-        SysTest --- ReportDoc[("SWP6 報告書")]
-        SysTest --> CodeChk["機械チェック"]
-        CodeChk --> CodeRev["自己レビュー"]
-        CodeRev --> Gate4{"自律ゲート"}
-        Gate4 -->|HALT| Halt4["人間へ判断"]
-        Halt4 --> Impl
-    end
-
-    subgraph P5 ["Phase 5 評価"]
-        Gate4 -->|PROCEED| Report["完了報告"]
-        Report --- AutoLog[("autoloop_log.md")]
-        Report --> Eval1["実際に動かして確認"]
-        Eval1 --> Eval2["要求の変更検討"]
-    end
-    Eval2 -->|変更あり| Req
-    Eval2 -->|変更なし| End(["終了"])
-
-    classDef human stroke:#cc0000,stroke-width:3px;
-    classDef tool stroke:#1565c0,stroke-width:2px;
-    classDef doc stroke:#2e7d32,stroke-width:2px;
-    classDef gate stroke:#ef6c00,stroke-width:3px;
-
-    class UserReq,Halt1,Halt2,Halt3,Halt4,Eval1,Eval2 human;
-    class ReqChk,TestChk,ArchChk,CodeChk tool;
-    class ReqDoc,ArchDoc,SkillDoc,ToolDoc,TestDoc,EvalDoc,ReportDoc,AutoLog doc;
     class Gate1,Gate2,Gate3,Gate4 gate;
 ```
 
