@@ -553,7 +553,7 @@ graph TD
 
 ### ⏩ フロー図：自律型（P開発自律型 / A開発自律型）
 
-各段階の終わりの関門が、人の承認から**自律ゲート**（点検ツールが合格 ＋ 自己レビューが問題なし）に置き換わります。止まるときは赤枠で人が判断（HALT）します。**最後の評価（Phase 5）は、必ず人**が行います。判断の根拠は `docs/process/autoloop_log.md` に1行ずつ残ります。
+各段階の終わりの関門が、人の承認から**自律ゲート**（点検ツールが合格 ＋ 自己レビューが問題なし）に置き換わり、AIが要求定義から総合テスト報告までを一気に自律走破します。**人間が関与するのは、最後のPhase 5（できあがったものの評価）のみ**です。判断の根拠は `docs/process/autoloop_log.md` に1行ずつ残ります。
 
 **A開発自律型**も工程の骨格は同じです。Phase 4において、ソースコードのデバッグに加えて手順書の振る舞い採点（評価セットの試行）とツール点検（`agent_def_check.py`）が自律ゲートの通過条件に加わります。
 
@@ -568,8 +568,6 @@ graph TD
         Req --> ReqChk["機械チェック"]
         ReqChk --> ReqRev["自己レビュー"]
         ReqRev --> Gate1{"自律ゲート"}
-        Gate1 -->|HALT| Halt1["人間へ判断"]
-        Halt1 --> Req
     end
 
     subgraph P2 ["Phase 2 総合テスト仕様"]
@@ -578,8 +576,6 @@ graph TD
         TestPlan --> TestChk["機械チェック"]
         TestChk --> TestRev["自己レビュー"]
         TestRev --> Gate2{"自律ゲート"}
-        Gate2 -->|HALT| Halt2["人間へ判断"]
-        Halt2 --> TestPlan
     end
     TestPlan -.->|差し戻し| Req
 
@@ -589,8 +585,6 @@ graph TD
         Arch --> ArchChk["機械チェック"]
         ArchChk --> ArchRev["自己レビュー"]
         ArchRev --> Gate3{"自律ゲート"}
-        Gate3 -->|HALT| Halt3["人間へ判断"]
-        Halt3 --> Arch
     end
 
     subgraph P4 ["Phase 4 実装と報告"]
@@ -603,8 +597,6 @@ graph TD
         SysTest --> CodeChk["機械チェック"]
         CodeChk --> CodeRev["自己レビュー"]
         CodeRev --> Gate4{"自律ゲート"}
-        Gate4 -->|HALT| Halt4["人間へ判断"]
-        Halt4 --> Impl
     end
 
     subgraph P5 ["Phase 5 評価"]
@@ -621,13 +613,13 @@ graph TD
     classDef doc stroke:#2e7d32,stroke-width:2px;
     classDef gate stroke:#ef6c00,stroke-width:3px;
 
-    class UserReq,Halt1,Halt2,Halt3,Halt4,Eval1,Eval2 human;
+    class UserReq,Eval1,Eval2 human;
     class ReqChk,TestChk,ArchChk,CodeChk tool;
     class ReqDoc,ArchDoc,ProgDoc,TestDoc,ReportDoc,AutoLog doc;
     class Gate1,Gate2,Gate3,Gate4 gate;
 ```
 
-オレンジの枠が**自律ゲート**です。6条件をすべて満たしたときだけ PROCEED（次へ進む）になり、1つでも欠ければ HALT（止まって人に聞く）になります。
+オレンジの枠が**自律ゲート**です。6条件をすべて満たしたときだけ PROCEED（次へ進む）になります。※点検エラーやテスト連続失敗などの「必須停止条件（9項目）」に該当した場合のみ、例外として安全停止（HALT）して人に判断を求めます。
 
 ### 🔁 人間を含めた開発ループ（承認ゲート型 / 自律型）
 
