@@ -132,7 +132,7 @@ def generate_bundle_readme(set_name: str, info: Dict[str, object]) -> str:
         f"- 依存パッケージ: `{reqs}`",
         "",
         "## 4. 使い方（チャットでの指示例）",
-        "このフォルダを Antigravity 2.0（または Claude Code / Cursor / GitHub Copilot / Codex）で開き、チャットで以下のように指示してください。",
+        "このフォルダを Antigravity App（または Claude Code / Cursor / GitHub Copilot / Codex）で開き、チャットで以下のように指示してください。",
         "",
     ])
     for u in usages:
