@@ -1,14 +1,18 @@
 ---
-title: ASDoQ システム開発文書品質モデル (Ver. 2.0a-3)
+title: ASDoQ システム開発文書品質モデル (Ver. 2.0a-3 / 原著作物: Ver. 2.0a)
 file_path: docs/guidelines/asdoq_model_markdown.md
-version: 2.0a-3
+version: 2.0a-3 (based on 2.0a)
 date: 2026-03-17
-author: システム開発文書品質研究会（ASDoQ） / 導入・構成: Antigravity Template
-description: プロジェクト内のすべての成果物（要求仕様書、設計書など）の品質を担保するための、ASDoQシステム開発文書品質モデルに基づく評価基準。Agent-Driven Agileプロセスにおいて、AIエージェントが文書生成およびセルフレビューを行う際の絶対的な準拠ガイドラインとなる。
+author: 原著作物: システム開発文書品質研究会（ASDoQ） / 一部改訂・Markdown形式変換: DADAProcess
+license: ASDoQドキュメントライセンス (https://asdoq.jp/rule.html / https://asdoq.jp/licence/ADL-1.1.pdf)
+description: プロジェクト内のすべての成果物（要求仕様書、設計書、テスト仕様書など）の品質を確保するための、ASDoQシステム開発文書品質モデルに基づく詳細評価基準。Product Ownerから「ASDoQ文書品質モデルに基づき厳密にレビューして」と指示された際にフルロードして使用する。
 ---
 
 # システム開発文書品質モデル Ver. 2.0a-3
-**発行元**: システム開発文書品質研究会（ASDoQ）
+- **原著作物**: 『システム開発文書品質モデル Ver. 2.0a』
+- **原著作物の著作権者・発行元**: © システム開発文書品質研究会（ASDoQ：Association of System Documentation Quality）
+- **ライセンス**: [ASDoQドキュメントライセンス (ADL)](https://asdoq.jp/licence/ADL-1.1.pdf)（研究会規則・著作物取扱規則: [https://asdoq.jp/rule.html](https://asdoq.jp/rule.html)）
+- **改変履歴**: 本ファイル（Ver. 2.0a-3）は、公開されている原著作物『システム開発文書品質モデル Ver. 2.0a』を元に一部改訂を加え、DADAProcessプロジェクトがAIエージェントによる読み込みに適したMarkdown形式へ変換・整形した派生著作物です。ASDoQドキュメントライセンスの下で提供され、同ライセンスの条件に従い無償で利用・複製・改変・再配布できます。
 
 ---
 

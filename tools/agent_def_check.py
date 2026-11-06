@@ -85,7 +85,7 @@ EXAMPLE_LINE_HINTS = ("記入例", "例:", "例：", "（例", "(例")
 # frontmatter
 FRONTMATTER_NAME_RE = re.compile(r"^name\s*:\s*(.+?)\s*$", re.MULTILINE)
 FRONTMATTER_DESC_RE = re.compile(r"^description\s*:\s*(.+?)\s*$", re.MULTILINE)
-SKILL_NAME_RE = re.compile(r"^[a-z][a-z0-9-]*$")
+SKILL_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9-]*$")
 
 # ID
 UNIT_HEADING_RE = re.compile(r"^#{2,6}\s*(UNIT-(?:\d{1,4}|EX))\b")

@@ -19,3 +19,43 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+==============================================================================
+Third-Party Notices / 収録・改変している第三者著作物の著作権表示およびライセンス条項
+==============================================================================
+
+DADAプロセス（DADAProcess）全体は上記の MIT License の下で提供され、誰でも無償かつ自由に利用・複製・改変・再配布することができます。
+なお、本リポジトリが収録または翻案・改変して同梱している以下の第三者著作物については、それぞれの原著作者の著作権表示およびライセンス条項（いずれも無償での自由な利用・複製・改変・再配布を認めるオープンなライセンス）が適用されます。再配布や派生著作物の作成にあたっては、以下の著作権表示およびライセンス条項を保持してください。
+
+------------------------------------------------------------------------------
+1. ASDoQ システム開発文書品質モデル関連文書
+------------------------------------------------------------------------------
+対象ファイル:
+- docs/guidelines/asdoq_model_markdown.md
+- docs/guidelines/asdoq_checklist.md
+- docs/guidelines/asdoq_writing_rules.md
+
+[著作権表示およびライセンス条項]
+- 原著作物: 『システム開発文書品質モデル Ver. 2.0a』
+- 著作権者: © システム開発文書品質研究会（ASDoQ：Association of System Documentation Quality）
+- ライセンス: ASDoQドキュメントライセンス (ASDoQ Document License: ADL)
+  - 研究会規則・著作物取扱規則: https://asdoq.jp/rule.html
+  - ライセンス条項本文 (ADL 1.1): https://asdoq.jp/licence/ADL-1.1.pdf
+
+[利用条件および改変（派生著作物）の明示]
+上記対象ファイルは、システム開発文書品質研究会（ASDoQ）が定める「システム開発文書品質研究会著作物取扱規則」および「ASDoQドキュメントライセンス（ADL）」に基づき許諾・提供されています。ADLの下で、著作権表示・ライセンス表示・改変履歴の明示を条件として、無償で自由な利用・複製・改変（翻案）・再配布が認められています（無保証での提供）。
+- `docs/guidelines/asdoq_model_markdown.md`（『システム開発文書品質モデル Ver. 2.0a-3』）は、公開されている原著作物『システム開発文書品質モデル Ver. 2.0a』を元に、一部改訂を加えたうえでAIエージェントによる読み込みに適したMarkdown形式へ変換・整形した派生著作物です。
+- `docs/guidelines/asdoq_checklist.md`（軽量チェックリスト）および `docs/guidelines/asdoq_writing_rules.md`（執筆ルール12箇条）は、原著作物『システム開発文書品質モデル Ver. 2.0a』（および上記改訂版 Ver. 2.0a-3）を基に、DADAProcessプロジェクトがAIエージェントの執筆・レビュー工程向けに抜粋・再構成・翻案した派生著作物です。原著作物そのものではありません。
+
+------------------------------------------------------------------------------
+2. 日本語推敲スキル JP-Humanizer（原著作物: yomiyasu）
+------------------------------------------------------------------------------
+対象ファイル:
+- .agents/skills/JP-Humanizer/
+
+[著作権表示およびライセンス条項]
+- 原著作物: `yomiyasu` (https://github.com/nanaism/yomiyasu)
+- 著作権者: Copyright (c) 2026 Aiichiro Oga (nanaism)
+- ライセンス: MIT License（全文は `.agents/skills/JP-Humanizer/LICENSE.md` に収録）
+- 改変の明示: DADAプロセスおよびASDoQシステム開発文書品質モデル向けに独自拡張・再構築した派生スキルであり、原著作物との混同を防ぐため名称を `JP-Humanizer` としています。
+

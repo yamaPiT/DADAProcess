@@ -15,28 +15,29 @@
 | [💻 サブエージェントの作り方](#サブエージェントの作り方) | ツールが自動で作るか、人間が作るか |
 | [🔧 Antigravityの設定](#antigravityの設定) | 名前・安全基準、Git、自動実行ポリシー、context7 |
 | [🎯 4つの使い方](#4つの使い方何を作るか--どう進めるか) | 何を作るか × どう進めるか |
+| [📄 Office文書・日本語推敲の単体利用と3つのスキルセット](#office文書や日本語推敲スキルだけを使う方法と3つのスキルセット) | パワポ対話編集・他AI文書の自然な日本語化だけを単体で行う方法、別リポジトリへの切り出し |
 | [📖 DADAプロセスとは？](#dadaプロセスとは) | なぜこの進め方なのか |
 | [📁 リポジトリ構成](#リポジトリ構成) | フォルダの意味、開発で増えるファイル |
 | [💡 使いこなすコツ](#aiエージェントを使いこなすコツ) | 起動のコツ、作業ブランチ、帳票、点検ツール、他環境への移植 |
 | [🔄 他のツールで使う](#他のツールで使う) | Codex / Claude Code / Cursor / GitHub Copilot へのカスタマイズ（参考。環境により異なる） |
 | [🖥️ 左欄にサブエージェントが出ないとき](#antigravity-20-の左欄とサブエージェント) | P開発自律型 / A開発自律型で工程が切り替わっても左欄が増えない理由 |
-| [📄 ライセンス](#ライセンス) | MIT License |
+| [📄 ライセンス・著作権表示](#ライセンス) | MIT License、および『yomiyasu』等の第三者著作物・参考文献の著作権表示 |
 
 ---
 
 <a id="はじめに"></a>
 ## 👋 はじめに
 
-本リポジトリは、**Google Antigravity 2.0**（エージェント開発/実行ツール）および **Antigravity CLI** を主対象に、AIエージェントと人間が協調しながら、高品質なソフトウェアを高速に構築するための **DADA（Document-and-Agent-Driven Agile）開発プロセステンプレート** です。Antigravity IDE でも動きますが、開発をエージェント主体で進める上では、Antigravity 2.0 の方が生産性と品質を高く保てます。その上で、エージェントが作成したファイルの確認と短い修正は、好きなエディタ（Antigravity IDE や VS Code など）の併用を推奨します。
+本リポジトリは、**Google Antigravity 2.0**（エージェント開発/実行ツール）および **Antigravity CLI** を主対象とした開発プロセステンプレートです。AIエージェントと人間が協調し、高品質なソフトウェアを高速に構築するための **DADA（Document-and-Agent-Driven Agile）プロセス** を提供します。Antigravity IDE でも動きますが、開発をエージェント主体で進める上では、Antigravity 2.0 の方が生産性と品質を高く保てます。その上で、エージェントが作成したファイルの確認と短い修正は、好きなエディタ（Antigravity IDE や VS Code など）の併用を推奨します。
 
-**「AIに実装は任せても、何を作るかと最終的な良し悪しは人間が握る」** —— このテンプレートを使うだけで、要求定義から実装まで全工程がドキュメント駆動で動き出します。区切りごとに確認する（承認ゲート型）か、完成まで任せるか（自律型）は、使い方で選べます。
+**「AIに実装は任せても、何を作るかと最終的な良し悪しは人間が握る」**。このテンプレートを使うだけで、要求定義から実装まで全工程がドキュメント駆動で動き出します。区切りごとに確認する（承認ゲート型）か、完成まで任せるか（自律型）は、使い方で選べます。
 
 本リポジトリで、次の2種類のソフトウェアの開発が可能です。
 
 1. プログラム（C、TypeScript など）
 2. エージェント定義（スキル、ルール、知識など）
 
-DADAプロセスは、IPAのESPR（[ESPR Ver.2.0：【改訂版】 組込みソフトウェア向け開発プロセスガイド](https://www.ipa.go.jp/archive/publish/secbooks20071119.html)）をベースに開発しています。DADAに従うと「要求仕様書」「アーキテクチャ設計書」「総合テスト仕様書/報告書」がAIによって作成され、各工程をAIと人間が協同で開発していきます。DADAプロセスは、MIT License で公開しているので、各社の開発プロセスにカスタマイズしていただくことも可能です。
+DADAプロセスは、IPAのESPR（[ESPR Ver.2.0：【改訂版】 組込みソフトウェア向け開発プロセスガイド](https://www.ipa.go.jp/archive/publish/secbooks20071119.html)）をベースに開発しています。DADAに従うと「要求仕様書」「アーキテクチャ設計書」「総合テスト仕様書/報告書」がAIによって作成されます。それらの文書を軸にして、各工程をAIと人間が協同で開発していきます。DADAプロセスは、MIT License で公開しているので、各社の開発プロセスにカスタマイズしていただくことも可能です。
 
 DADAプロセスは、**人間とAIによる協同開発プロセス**です。最初のプロンプトで、プログラムかエージェント定義のどちらを作るか、また、承認ゲート型か自律型のどちらで進めるかを指定できます。
 
@@ -128,7 +129,7 @@ GitHubアカウントをお持ちでない場合は、以下の手順でロー�
 
 GitHub / ZIP のどちらで始めても、**ここから先（Step 3 以降）は共通**です。
 
-自分やAIの名前、全プロジェクト共通の安全基準、さらにcontext7 はプロジェクトごとに設定するのではなく Antigravity 側の設定なので、[🔧 Antigravityの設定](#antigravityの設定) を参照してください。
+自分やAIの名前、全プロジェクト共通の安全基準、さらにcontext7はプロジェクトごとの設定ではありません。これらはAntigravity側の共通設定なので、[🔧 Antigravityの設定](#antigravityの設定) を参照してください。
 
 ### Step 3: プロジェクトを開く（環境の準備）
 
@@ -275,9 +276,9 @@ Antigravity 2.0には、意図しないファイル破壊や悪意のあるシ�
 | **コマンド実行** | Agent Settings → **Security Preset** | ターミナルコマンド（`python tools/dada_check.py`、`pytest`、`git` など）の許可ポップアップ | **Turbo Mode**（確認を求めないプリセット） |
 | **成果物・ファイル** | Agent Behavior → **Artifact Review Policy** | ファイル更新ごとの確認・コミット待ち | **Always Proceed** |
 
-**補足**：特定のコマンド実行だけを自動として許可したい場合は、Security Preset は Inherit General のままとしておき、すぐ下の Local Permissions > Terminal Commands の [Open] を開き、python や pytest（作業ブランチをチャットで頼むなら git も）を Allow に追加します。
+**補足**：特定のコマンド実行だけを自動許可したい場合は、Security Preset は Inherit General のままにします。そのうえで、すぐ下の Local Permissions > Terminal Commands の [Open] を開きます。そこに python や pytest（作業ブランチをチャットで頼むなら git も）を Allow として追加してください。
 
-この2つは、DADAの承認ゲートや自律ゲートとは**別物**です。DADAの工程は通っていても、ツール側が毎回人間に聞くため、**自律型で Loop を自動的に回せません。** 承認ゲート型で始めるなら、既定（多くは **Inherit General**）のままで構いません。
+この2つは、DADAの承認ゲートや自律ゲートとは**役割が異なります**。DADAの工程は通っていても、ツール側が毎回人間に聞くため、**自律型で Loop を自動的に回せません。** 承認ゲート型で始めるなら、既定（多くは **Inherit General**）のままで構いません。
 
 **P開発自律型 / A開発自律型** では、対象プロジェクトについて上の2項目を変えます。それでも、次が安全網が残ります。
 
@@ -289,7 +290,7 @@ Antigravity 2.0には、意図しないファイル破壊や悪意のあるシ�
 | **Phase 5** | 自律型でも、最後の評価は人間。自律化しない |
 
 > [!WARNING]
-> Security Preset を Turbo Mode にし、Artifact Review Policy を Always Proceed にすると、AIが判断したファイル生成・編集・コマンド実行が、人間の確認を挟まずリアルタイムに行われます。作業ブランチを切ってから変え、人命・金銭・法令に関わる開発では使わないでください（自律型そのものの適用限界と同じです。第10.7節）。
+> Security Preset を Turbo Mode にし、Artifact Review Policy を Always Proceed にすると、確認ダイアログが出なくなります。AIが判断したファイル生成・編集・コマンド実行が、人間の確認を挟まずリアルタイムに行われます。作業ブランチを切ってから変え、人命・金銭・法令に関わる開発では使わないでください（自律型そのものの適用限界と同じです。第10.7節）。
 
 > [!WARNING]
 > PC操作をエージェントに任せることに不安が残る場合は、 **Security Preset**と**Artifact Review Policy**を、共に**inherit General**のままにしておいてください。そして、自律型ではなく承認ゲート型で開発を行ってください。
@@ -305,7 +306,7 @@ Antigravity 2.0には、意図しないファイル破壊や悪意のあるシ�
 
 #### Antigravity IDE の場合
 
-IDE の項目名も 2.0 と異なります（[Settings](https://antigravity.google/docs/ide/settings/) の Terminal Command Auto Execution と Artifact Review）。ただし P開発自律型 / A開発自律型は、サブエージェントをツールが自動作成できる **Antigravity 2.0** の方が向いています。
+IDE の項目名も 2.0 とは異なります（[Settings](https://antigravity.google/docs/ide/settings/) の Terminal Command Auto Execution と Artifact Review で設定します）。ただし P開発自律型 / A開発自律型は、サブエージェントをツールが自動作成できる **Antigravity 2.0** の方が向いています。
 
 <a id="global-rules基本法の設定とカスタマイズ"></a>
 ### Global Rules（基本法）の設定とカスタマイズ
@@ -477,7 +478,72 @@ AIが勝手に走り続けるわけではなく、**次の6つをすべて満た
 | エージェント定義を、品質を確かめながら作りたい | **A開発承認ゲート型** |
 | エージェント定義一式を早く形にして、動かして直したい | **A開発自律型** |
 | 人の命・お金・法律に関わる | **承認ゲート型**（P開発承認ゲート型 / A開発承認ゲート型） |
+| **Office文書（パワポ・Word・Excel）を対話しながら編集したい** | DADAプロセスは使わず、**`office-document` スキル単体**を使う（すぐ下の章を参照） |
+| **他のAIが作った `.md` を人間っぽく自然な日本語に書き直したい** | DADAプロセスは使わず、**`JP-Humanizer` スキル単体**を使う（すぐ下の章を参照） |
 | 数十行の小さなスクリプト、画面の色や余白の微調整 | DADAプロセスは使わず、AIに直接指示する |
+
+---
+
+<a id="office文書や日本語推敲スキルだけを使う方法と3つのスキルセット"></a>
+## 📄 Office文書や日本語推敲スキルだけを使う方法（＋3つのスキルセットの切り出し）
+
+本リポジトリには、役割の異なる**3種類のスキルセット**が同梱されています。ソフトウェア開発全体（DADAプロセス）だけでなく、**(2) Office文書の取り扱いだけ**、あるいは **(3) 人間っぽい自然な日本語への書き直しだけ**を単体（スタンドアロン）で使うこともできます。
+
+| # | スキルセット名 | 構成要素（スキル＋決定論的ツール＋知識） | 主な用途 |
+| :---: | :--- | :--- | :--- |
+| **(1)** | **DADAプロセス本体**<br>(`dada-core`) | `dada-process` + 8ペルソナスキル + `dada_check.py` + `agent_def_check.py` + `docs/guidelines/` | 要求定義→テスト仕様→設計→実装→評価の全工程開発 |
+| **(2)** | **Office文書スキルセット**<br>(`office-suite`) | [`.agents/skills/office-document/`](.agents/skills/office-document/SKILL.md) + [`tools/office_io.py`](tools/office_io.py) + [`docs/templates/office/`](docs/templates/office/README.md) (`Normal.dotm` / `Blank.potx`) | Word / Excel / パワポ / PDF の読み込み・対話編集・テンプレート変換・プレゼン自動生成 |
+| **(3)** | **人間らしい日本語への変換**<br>(`jp-humanizer`) | [`.agents/skills/JP-Humanizer/`](.agents/skills/JP-Humanizer/SKILL.md) + [`tools/style_check.py`](tools/style_check.py) + ASDoQ執筆・チェック基準 | 他のAIが書いた `.md` や仕様書の「AIっぽさ（AI-Slop）」を除去し、元の意味を保ったまま自然な日本語へ推敲 |
+
+### 💡 使い方①：「Office文書扱い」だけを行う（例：パワポを対話しながら編集する）
+
+DADAプロセス（Phase 0〜5）を起動せずに、手元のPowerPoint（`.pptx`）やWord（`.docx`）、Excel（`.xlsx`）を渡して、AIとディスカッションしながら直接ブラッシュアップできます。
+
+**チャットの指示例（パワポを対話編集するとき）**:
+```text
+DADAプロセスの開発工程は使わず、office-document スキル単体で作業してください。
+添付（または指定パス）の PowerPoint ファイル「proposal.pptx」を読み込んで、私とディスカッションしながらスライドの構成と文面を編集したいです。まずは中身を読み込んで構成を教えてください。
+```
+
+**チャットの指示例（Markdownを標準テンプレートでWordやパワポに変換するとき）**:
+```text
+この report.md を、標準テンプレート（Normal.dotm / Blank.potx）を使って Word（.docx）と PowerPoint（.pptx）に変換してください。
+```
+
+- AIは裏側で決定論的ツール `tools/office_io.py`（`import` / `patch` / `export` / `inspect`）を呼び出すため、**トークンをほとんど消費せず、元のスライドマスターやWordの見出し採番・余白を崩さずに**編集・出力します。
+- 初回のみ、Office操作用ライブラリ（`pip install python-docx openpyxl python-pptx pypdf pdfplumber reportlab pillow lxml`）が必要です。
+
+### 💡 使い方②：「人間っぽく書き直す（JP-Humanizer）」だけを行う
+
+他のAI（ChatGPTやClaudeなど）が生成した `.md` ファイルや技術記事・仕様書を渡して、**元の意味・数値・条件を一切変えずに「AIっぽい不自然な日本語」だけを自然な日本語に書き直す**ことができます。
+
+**チャットの指示例**:
+```text
+DADAプロセスの開発工程は使わず、JP-Humanizer スキル単体で作業してください。
+他のAIが作成した「draft_article.md」を、元の意味や数値を保持したまま、AIっぽさのない自然で読みやすい日本語に書き直してください。
+```
+
+- AIは以下の**3ステップ**で確実に推敲します（追加パッケージ不要、Python標準ライブラリのみで動作）：
+  1. `python tools/style_check.py snapshot --input <ファイル>` で推敲前の意味シグネチャ（ID・数値・単位・見出し・表構造・否定極性）を保存
+  2. `python tools/style_check.py lint --input <ファイル>` と `JP-Humanizer` の8観点（不自然な比喩・AIスラング・過剰な否定対比・英語由来のダッシュ `—`・太字3倍増の抑制・長文分割など）で自然な日本語へ更新
+  3. `python tools/style_check.py verify --input <ファイル>` で元の意味・数値・構造が100%保持されていることを機械検証
+
+> **著作権・出典について**: `JP-Humanizer` は、大賀愛一郎氏（`nanaism` / ALGO ARTIS Inc.）によるオープンソーススキル[『yomiyasu』](https://github.com/nanaism/yomiyasu)（MIT License）の設計思想を参考にしています。あわせて、逆瀬川氏（`@gyakuse`）による[Qiita 7万記事の定量分析](https://nyosegawa.com/posts/qiita-writing-before-after-ai/)の知見も取り入れました。これらにASDoQ文書品質モデルと決定論的検証ツール（`tools/style_check.py`）を組み合わせて独自に再構築したものです。元の `yomiyasu` との混同を避けるため、名称を `JP-Humanizer` としています（詳細は末尾の[ライセンス・著作権表示](#ライセンス)を参照）。
+
+### 📦 特定のスキルセットだけを別リポジトリ・別フォルダへ切り出す方法
+
+今後、「(2) Office文書スキルセットだけ」や「(3) JP-Humanizer だけ」を独立したリポジトリとして切り出すことも可能です。別の既存プロジェクトへ導入したい場合は、同梱の切り出しツール [`tools/export_skillset.py`](tools/export_skillset.py) を実行してください。1コマンドで、必要なスキル・Pythonツール・テンプレート・専用README一式を漏れなく抽出できます。
+
+```bash
+# 切り出し可能な3種類のスキルセット一覧を確認する
+python tools/export_skillset.py list
+
+# (2) Office文書スキルセットだけを切り出す
+python tools/export_skillset.py export --set office-suite --out ../DADA-Office-Suite
+
+# (3) JP-Humanizer（人間らしい日本語への変換スキルセット）だけを切り出す
+python tools/export_skillset.py export --set jp-humanizer --out ../JP-Humanizer-Skill
+```
 
 「まず試作して、本格開発に入ってからDADAを導入する」必要はありません。試作そのものを **P開発自律型 / A開発自律型** で回せます。方向が固まったら承認ゲート型へ切り替えれば、確認の関門が増えます。
 
@@ -703,7 +769,7 @@ DADAプロセスはこの発想を反転させ、**開発ドキュメントを�
 
 ### なぜAgentic Codingでもドキュメント中心なのか？
 
-「AIがコードを書いてくれるなら、ドキュメントはもう要らないのでは？」—— そう思われるかもしれません。しかし、AIにプログラミングを自律的に任せる手法（Agentic Coding）には、次の**2つの致命的な弱点**があります。
+「AIがコードを書いてくれるなら、ドキュメントはもう要らないのでは？」と思われるかもしれません。しかし、AIにプログラミングを自律的に任せる手法（Agentic Coding）には、次の**2つの致命的な弱点**があります。
 
 | # | 問題 | 何が起きるか |
 |:---:|:---|:---|
@@ -750,16 +816,16 @@ DADAプロセスは、以下のような開発領域で特に力を発揮しま�
 > [!NOTE]
 > **業界全体がDADAと同じ結論に向かっている**
 >
-> 2025〜2026年にかけて、AIエージェントの急速な進化により、業界全体で**Spec-Driven Development（仕様駆動開発）**・**Context Engineering（コンテキスト工学）**と呼ばれるパラダイムが急速に広まっています。
+> 2025〜2026年にかけて、AIエージェントの急速な進化に伴い、開発手法のトレンドも大きく変化しました。業界全体で**Spec-Driven Development（仕様駆動開発）**や**Context Engineering（コンテキスト工学）**と呼ばれるパラダイムが広まっています。
 >
 > その核心は、「エージェント間やセッション間での情報の引き渡し（Handoff）を、一時的なチャット履歴ではなく、人間が読める仕様書・設計書で行うべきだ」という考え方です。これはDADAプロセスが当初から掲げてきた**ドキュメント絶対主義（Single Source of Truth）**と完全に一致しています。
 >
 > | 業界のトレンド | DADAプロセスでの対応 |
 > |:---|:---|
-> | **Spec-Driven Development** — 仕様ファイル（`SPEC.md`等）をコードより先に書き、仕様を承認してから実装する | **ドキュメント絶対主義と承認ゲート** — コードに先立ちSW105/SW205を作成・承認 |
-> | **Context Engineering** — コンテキストの品質を管理し、不要な情報を排除する | **アテンション・リセット** — フェーズ移行時に過去のチャット履歴を情報源から除外する（ツールが自動的にサブエージェントを作る場合は、会話を物理的に分ける） |
-> | **Structured Handoffs** — セッション間の引き渡しを「目的と文脈を含む構造化文書」で行う | **フェーズサマリー＋承認済みドキュメント** — `last_phase_summary.md` と成果物のみを次フェーズに引き継ぐ |
-> | **Phase Gate Review** — 仕様と計画を承認してからAIに実装を任せる | **承認ゲート** — 承認ゲート型では各工程で人の承認。自律型では点検ツールと自己レビューが同じ関門になる |
+> | **Spec-Driven Development**：仕様ファイル（`SPEC.md`等）をコードより先に書き、承認後に実装する | **ドキュメント絶対主義と承認ゲート**：コードに先立ちSW105/SW205を作成・承認 |
+> | **Context Engineering**：コンテキストの品質を管理し、不要な情報を排除する | **アテンション・リセット**：フェーズ移行時に過去のチャット履歴を情報源から除外する（ツール自動作成時は会話を物理分離） |
+> | **Structured Handoffs**：セッション間の引き渡しを「目的と文脈を含む構造化文書」で行う | **フェーズサマリー＋承認済みドキュメント**：`last_phase_summary.md` と成果物のみを次フェーズに引き継ぐ |
+> | **Phase Gate Review**：仕様と計画を承認してからAIに実装を任せる | **承認ゲート**：承認ゲート型では各工程で人の承認。自律型では点検ツールと自己レビューが同じ関門になる |
 >
 > DADAプロセスは、これらのトレンドが「ベストプラクティス」として広まる以前から、同じ原則を体系的に実践していました。エージェント技術が進化すればするほど、「ドキュメントを中心にAIと人間が協調する」というDADAのアプローチの妥当性は、むしろ強まっています。
 
@@ -841,7 +907,7 @@ Antigravity v2のカスタマイズ体系（AGENTS.md + Agent Skills）に準拠
 | :--- | :--- | :--- |
 | `.agents/skills/<name>/SKILL.md` | 日本語の手順書 | 先頭に `name` と「いつ使うか」の `description` が必要 |
 | `.agents/skills/<name>/references/` | スキルから参照する知識・ひな形 | 参照パスと実ファイルを一致させる |
-| `.agents/AGENTS.md` | 常時効くルール | 既存のDADA用ルールに、作っているエージェント定義の不変条件を足す場合がある |
+| `.agents/AGENTS.md` | 常時適用されるルール | 既存のDADA用ルールに、作っているエージェント定義の不変条件を足す場合がある |
 | `tools/` | 道具のプログラム（例: `tools/<name>.py`） | 最初からある `dada_check.py` などと並べて置く |
 | `tests/` | 道具側のテストコード | **`tools/` には置かない**（置くと点検ツールがテストを見つけられない） |
 | `docs/process/eval_report.md` | 振る舞いの採点記録 | 同じ入力を何回も試し、合格割合で判定する |
@@ -863,6 +929,8 @@ Antigravity v2のカスタマイズ体系（AGENTS.md + Agent Skills）に準拠
 | `dada-check/` | 機械的検証（ID対応照合・曖昧語走査・未実装検出）のスクリプトへの委譲 | コアスキル |
 | `unit-test-generator/` | 自律的なテストコード生成とデバッグ実行 | 開発支援スキル |
 | `document-writer/` | 開発ドキュメントの物理的な書き出しと整合性維持 | 基盤スキル |
+| `office-document/` | Word / Excel / PowerPoint / PDF の読み込み・差分パッチ・テンプレート変換・プレゼン自動生成（`tools/office_io.py` 連携） | 文書入出力スキル（単体利用可） |
+| `JP-Humanizer/` | AIっぽい不自然な日本語（AI-Slop）を元の意味を保持したまま自然な日本語へ構造推敲・評価（`tools/style_check.py` 連携） | 文書品質スキル（単体利用可） |
 | `context7-mcp/` | 最新ライブラリ情報の検索とドキュメント参照 | 調査スキル |
 
 > `references/` に文書スケルトンを置くのは、成果物が Markdown 文書である作成スキル（`requirements-engineer` / `test-engineer` / `architect`）のみです。`programmer` は言語依存のソースコードが成果物のためスケルトンを持ちません。レビュアースキルは ASDoQ チェックリスト等を `docs/guidelines/` からオンデマンドで読むため、スキル配下に複製しません。
@@ -895,7 +963,7 @@ Antigravity v2のカスタマイズ体系（AGENTS.md + Agent Skills）に準拠
 >
 > | 層 | 内容 | 扱い |
 > | :--- | :--- | :--- |
-> | **不変条件 (Invariants)** | 承認ゲート、ドキュメント絶対主義、アテンション・リセット、ID体系、各スキルの禁止事項・完了条件・自己チェック、機械的検証 | **常に絶対。省略・緩和は不可** |
+> | **不変条件 (Invariants)** | 承認ゲート・ドキュメント絶対主義・アテンションリセット・ID体系、および各スキルの禁止事項・完了条件・自己チェック・機械的検証 | **常に絶対。省略・緩和は不可** |
 > | **手順 (Procedure)** | 各スキルの作業手順・レビュー手順のステップの順序と粒度 | **品質の下限を保証する足場。下限であって上限ではない** |
 >
 > - **Guidedプロファイル（既定）**: 手順を1ステップずつ逐語的に実行します。低性能モデルでも下限品質に必ず到達します。
@@ -976,7 +1044,7 @@ Antigravity v2のカスタマイズ体系（AGENTS.md + Agent Skills）に準拠
 
     * 規格準拠の例として `docs/templates/IEEE29148_2018_SRS.md` が入っています。`IEEE29148_2018に準拠したテンプレートで作成して` と指示するだけで使えます。
     * 文書ID（SW105 / SWP6 / SW205）とトレーサビリティID（`REQ` / `TC` / `UNIT`）は変えないでください。目次が変わっても、機械チェックが参照するのはこのIDです。
-    * `docs/templates/agent/` はエージェント定義を作るときのひな形で、判定された時点で自動適用されます。自社フォーマットとは別物です。
+    * `docs/templates/agent/` はエージェント定義を作るときのひな形で、判定された時点で自動適用されます。自社フォーマット用のひな形とは用途が異なります。
 
 14. **開発の前後で作業ブランチを使う**
     * DADAプロセスは速いので、起動前に作業ブランチを切り、区切りがついたらマージする癖をつけてください。失敗したら、マージ前ならブランチを切る前へ、マージ後ならマージ前の版へ戻ります。
@@ -1014,10 +1082,10 @@ AIに「いつも守ってほしいこと」と「この作業のときだけ読
 
 | 種類 | このリポジトリでの場所 | たとえ |
 | :--- | :--- | :--- |
-| **ルール** | [`.agents/AGENTS.md`](.agents/AGENTS.md) | 職場の就業規則。会話が始まるときから効く |
+| **ルール** | [`.agents/AGENTS.md`](.agents/AGENTS.md) | 職場の就業規則。会話が始まるときから常に適用される |
 | **スキル** | [`.agents/skills/`](.agents/skills/) の各フォルダにある `SKILL.md` | 作業マニュアル。必要なときだけ読む |
 
-Antigravity は、この `.agents/` を最初から読みます。Codex / Claude Code / Cursor / GitHub Copilot は、**別のファイル名やフォルダ**を最初に見に行きます（GitHub Copilot のスキルだけは、`.agents/skills/` も公式に読むので、スキルのコピーは不要です）。だから「DADAの中身を書き換える」のではなく、**そのツールが見に行く場所へ、案内を置く**（または同じファイルを置く）のがカスタマイズです。
+Antigravity は、この `.agents/` を最初から読みます。一方、Codex / Claude Code / Cursor / GitHub Copilot は、**別のファイル名やフォルダ**を最初に見に行きます。なお、GitHub Copilot のスキルだけは `.agents/skills/` も公式に読むため、スキルのコピーは不要です。だから「DADAの中身を書き換える」のではなく、**そのツールが見に行く場所へ、案内を置く**（または同じファイルを置く）のがカスタマイズです。
 
 おすすめは、元の `.agents/` はそのまま残し、案内役のファイルを1つ足す方法です。ルールやスキルを二重に書き写すと、あとから直したときにずれます。
 
@@ -1077,7 +1145,7 @@ Antigravity は、この `.agents/` を最初から読みます。Codex / Claude
 
 > [!IMPORTANT]
 > **ツール名の読み替えについて**  
-> 以降のドキュメント（Step 3 〜 Step 5、および [4つの使い方](#4つの使い方何を作るか--どう進めるか) 等）では説明の便宜上「Antigravity」を基準に記載していますが、**「Antigravity」と書かれている部分を、ご自身がお使いのツール名（Cursor / Claude Code / GitHub Copilot / Codex 等）に読み替えて**そのまま進めてください。
+> 以降のドキュメント（Step 3 〜 Step 5、および [4つの使い方](#4つの使い方何を作るか--どう進めるか) 等）では、説明の便宜上「Antigravity」を基準に記載しています。他ツールをお使いの場合は、**「Antigravity」と書かれている部分をご自身のツール名（Cursor / Claude Code / GitHub Copilot / Codex 等）に読み替えて**そのまま進めてください。
 
 ---
 
@@ -1112,7 +1180,7 @@ Antigravity は、この `.agents/` を最初から読みます。Codex / Claude
 <a id="antigravity-20-の左欄とサブエージェント"></a>
 ## 🖥️ Antigravity 2.0 の左欄とサブエージェント
 
-Antigravity 2.0 で **P開発自律型 / A開発自律型**（承認ゲート型でも同じ）を使うと、要求定義からアーキテクチャ設計へ切り替わるときなど、工程の切れ目でツールがサブエージェントを自動生成し、作業を引き継ぎます。過去の会話が次工程に残らないようにするためです（アテンション・リセット）。
+Antigravity 2.0 で **P開発自律型 / A開発自律型**（承認ゲート型でも同じ）を使うと、工程の切れ目でツールがサブエージェントを自動生成します。要求定義からアーキテクチャ設計へ切り替わるときなどに作業を引き継ぎ、過去の会話が次工程に残らないようにするためです（アテンション・リセット）。
 
 このとき、**左欄（会話一覧）には、そのサブエージェントは追加されません。** 人間が新しく会話スレッドを作ったときだけ左欄に行が増える、というのが Antigravity の仕様です。システムは工程のたびにサブエージェントを作るので、すべてを左欄に出すと一覧が見にくくなるための省略です。
 
@@ -1136,7 +1204,47 @@ git remote set-url origin https://github.com/yamaPiT/DADAProcess.git
 ```
 
 <a id="ライセンス"></a>
-## 📄 ライセンス
+## 📄 ライセンス・著作権表示 (License & Attributions)
 
-本テンプレートは [MIT License](LICENSE) の下で公開されています。  
-自由にフォーク・改変・再配布してください。
+DADAプロセス（本リポジトリのワークスペースルール・スキル定義・テンプレート・検証スクリプト一式）は [MIT License](LICENSE)（`Copyright (c) 2026 YAMAMOTO Masaki (yamaPiT)`）の下で公開されています。  
+商用・非商用を問わず、無償かつ自由にフォーク・利用・改変・再配布できます。
+
+### 収録・改変している第三者著作物および参考文献の著作権表示
+
+本リポジトリが収録または翻案・改変して同梱している第三者著作物については、それぞれの原著作者の著作権表示およびライセンス条項が適用されます。いずれも無償での自由な利用・複製・改変・再配布を認めるオープンなライセンスです。再配布や派生著作物の作成にあたっては、[LICENSE](LICENSE) および以下の表示を保持してください。
+
+#### 1. ASDoQ システム開発文書品質モデル関連文書（ASDoQドキュメントライセンス）
+
+本リポジトリの `docs/guidelines/asdoq_model_markdown.md`、`docs/guidelines/asdoq_checklist.md`、および `docs/guidelines/asdoq_writing_rules.md` は、システム開発文書品質研究会（ASDoQ）が公開している著作物を元に一部改訂・翻案して作成・収録しています。これらは同研究会が定める「システム開発文書品質研究会著作物取扱規則」および「ASDoQドキュメントライセンス（ADL）」に基づき提供されています。
+
+- **原著作物（公開版）**: 『システム開発文書品質モデル Ver. 2.0a』
+- **原著作物の著作権者**: © システム開発文書品質研究会（ASDoQ：Association of System Documentation Quality）
+- **適用ライセンス**: [ASDoQドキュメントライセンス (ADL 1.1)](https://asdoq.jp/licence/ADL-1.1.pdf)
+- **研究会規則・著作物取扱規則**: [https://asdoq.jp/rule.html](https://asdoq.jp/rule.html)
+- **利用条件と改変（派生著作物）の明示**:
+  - ASDoQドキュメントライセンスの下で、著作権表示・ライセンス表示・改変履歴の明示を条件として、無償で自由な利用・複製・改変（翻案）・再配布が認められています（無保証での提供）。
+  - `docs/guidelines/asdoq_model_markdown.md`（『システム開発文書品質モデル Ver. 2.0a-3』）は、公開されている原著作物『システム開発文書品質モデル Ver. 2.0a』を元に一部改訂を加えた派生著作物です。DADAProcessプロジェクトがAIエージェントによる読み込みに適したMarkdown形式へ変換・整形しています。
+  - `docs/guidelines/asdoq_checklist.md`（軽量チェックリスト）および `docs/guidelines/asdoq_writing_rules.md`（執筆ルール12箇条）は、原著作物『システム開発文書品質モデル Ver. 2.0a』（および上記改訂版 Ver. 2.0a-3）を基にした派生著作物です。DADAProcessプロジェクトがAIの執筆・レビュー工程向けに抜粋・再構成・翻案しています。
+
+#### 2. 日本語推敲スキル `JP-Humanizer`（原著作物『yomiyasu』・MIT License）
+
+本リポジトリの `.agents/skills/JP-Humanizer/` および `tools/style_check.py` は、大賀愛一郎氏（`nanaism` / ALGO ARTIS Inc.）が公開しているオープンソーススキル『yomiyasu』（MIT License）の設計思想を参考にしています。DADAプロセスおよびASDoQシステム開発文書品質モデル向けに独自拡張・再構築しているため、元の『yomiyasu』との混同を防ぐ目的で名称を **`JP-Humanizer`** としています。
+
+- **原著作物**: `yomiyasu` (Japanese text readability & AI-slop refinement skill)
+- **リポジトリ**: [https://github.com/nanaism/yomiyasu](https://github.com/nanaism/yomiyasu)
+- **解説記事**: [AI-Slopな日本語を構造レベルで読みやすくするSkill『yomiyasu（よみやす）』を作りました](https://zenn.dev/algoartis/articles/0b1c731881b25c)
+- **著作者**: Aiichiro Oga (`nanaism` / ALGO ARTIS Inc.)
+- **ライセンス**: MIT License (`Copyright (c) 2026 Aiichiro Oga (nanaism)`)
+- **ライセンス全文の収録先**: [`.agents/skills/JP-Humanizer/LICENSE.md`](.agents/skills/JP-Humanizer/LICENSE.md)
+
+#### 3. 生成AI前後の日本語文章の定量分析（参考文献）
+
+`JP-Humanizer` の推敲観点（英語圏LLM由来のダッシュ記号の排除、太字強調や全角コロン付き箇条書きの抑制、長文化と読点増加の抑制など）および `tools/style_check.py` の検査基準には、以下の定量分析の知見を活用しています。
+
+- **記事名**: [生成AI以前と以後でエンジニアの文章はどう変わったのか: Qiitaの7万記事を数えてみた話](https://nyosegawa.com/posts/qiita-writing-before-after-ai/)
+- **著者**: 逆瀬川 (`@gyakuse`)
+
+#### 4. 開発プロセス・エージェント設計原則の参考文献
+
+- **組込みソフトウェア開発プロセス**: 情報処理推進機構（IPA）[『ESPR Ver.2.0：【改訂版】 組込みソフトウェア向け開発プロセスガイド』](https://www.ipa.go.jp/archive/publish/secbooks20071119.html)
+- **エージェント設計の三原則と5つの設計パターン**: Anthropic [『Building Effective Agents』](https://www.anthropic.com/research/building-effective-agents)（`docs/guidelines/agent_design_principles.md`）

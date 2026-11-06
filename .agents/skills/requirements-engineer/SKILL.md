@@ -11,7 +11,7 @@ description: DADAプロセスのPhase 1（要求定義）で使用するペル�
 Product Ownerの意図を深く汲み取り、実装とテストの「唯一の正解（Single Source of Truth）」となる高品質な要求仕様書（SW105）を構築すること。
 
 ## 2. 作業手順（この順に実行すること）
-1. **準備**: `docs/guidelines/asdoq_writing_rules.md`（ASDoQ執筆ルール12箇条）をロードし、執筆中は1文ごとに適用する。
+1. **準備と思考過程の宣言**: `docs/process/last_phase_summary.md`（存在する場合）と `docs/guidelines/asdoq_writing_rules.md`（ASDoQ執筆ルール12箇条）をロードし、作業開始時に「①現在地 ②判断の根拠 ③次の一手」を簡潔に宣言する。執筆中は12箇条を1文ごとに適用する。
    - **新規作成の場合**: 本スキルの `references/SW105_skeleton.md` をコピーして出発点とする（見出し構造を自分で組み立てない）。スケルトン内の【AIへの指示】と記入例（REQ-EX）に従い、記入後は指示コメントと記入例を削除する。
    - **既存文書がある場合**: 既存の `SW105` を読み込み、差分更新とする。
    - Product Ownerからテンプレート指定（IEEE29148等）がある場合のみ、スケルトンではなく `docs/templates/` の該当ひな形を優先する。
@@ -30,7 +30,10 @@ Product Ownerの意図を深く汲み取り、実装とテストの「唯一の�
    - **優先度**: Must / Should / Could
    ```
 
-4. **書き出し**: `document-writer` スキルの手順で `docs/artifacts/SW105_ソフトウェア要求仕様書.md` に保存する。
+4. **執筆と読みやすさ推敲の3ステップ（必須）**:
+   - **(Step 1) 下書き執筆とスナップショット保存**: 今まで通りに `document-writer` スキルの手順で `docs/artifacts/SW105_ソフトウェア要求仕様書.md` に文書を書き出し、推敲前の意味シグネチャを保存する（`python tools/style_check.py snapshot --input docs/artifacts/SW105_ソフトウェア要求仕様書.md --summary`）。
+   - **(Step 2) 読みやすくするスキルの適用**: スキル `.agents/skills/JP-Humanizer/SKILL.md` を適用し、決定論的チェッカ（`python tools/style_check.py lint --input docs/artifacts/SW105_ソフトウェア要求仕様書.md`）で検出されたAIっぽい表現・長文・冗長表現と文の構造を自然な日本語へ書き直して文書を更新する。
+   - **(Step 3) 意味保持の確認と書き直し**: `python tools/style_check.py verify --input docs/artifacts/SW105_ソフトウェア要求仕様書.md` を実行し、さらに自分自身で推敲後の文書が元の意味（ID・数値・条件・優先度・否定極性）を100%保持しているか確認する。保持していない箇所があればただちに書き直す。
 5. **自己チェック**: 「4. 完了前の自己チェック」を実施してからレビュアーに引き継ぐ。
 
 ## 3. 検証条件（Acceptance Criteria）の書き方
@@ -66,6 +69,7 @@ Product Ownerの意図を深く汲み取り、実装とテストの「唯一の�
 - [ ] 用語定義の各用語が、文書全体で同じ名称で使われている（言い換えが混入していない）
 - [ ] 未決定事項は「7. その他・特記事項」にTBDとして解消計画（時期・方法）付きで列挙した（本文に埋もれさせない）
 - [ ] 設計の詳細（技術選定・モジュール分割）に踏み込んだ記述が混入していない
+- [ ] `JP-Humanizer` スキルと `style_check.py` による読みやすさ推敲（Step 2）および元の意味保持の確認（Step 3）が完了している
 
 ## 5. 開発対象が「エージェント定義」の場合の追加手順（従来型プログラムの場合は本節を読み飛ばす）
 

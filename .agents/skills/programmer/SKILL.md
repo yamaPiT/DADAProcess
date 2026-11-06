@@ -13,7 +13,7 @@ description: DADAプロセスのPhase 4（実装・総合テスト報告）で�
 **ひな形を置かない理由**: 本スキルの成果物はソースコード（エージェント定義ではスキル・ツールを含む）であり、言語とディレクトリ構成に依存する。そのため `references/` に文書スケルトンは置かない。実装時の規約は `docs/guidelines/coding_guidelines.md` をロードする。文書を新規作成する作成スキル（`requirements-engineer` / `test-engineer` / `architect`）だけが `references/` にスケルトンを持つ。
 
 ## 2. 作業手順（この順に実行すること）
-1. **準備**: 承認済みの `SW205` 全文と `docs/guidelines/coding_guidelines.md` をロードする。
+1. **準備と思考過程の宣言**: `docs/process/last_phase_summary.md`、承認済みの `SW205` 全文、および `docs/guidelines/coding_guidelines.md` をロードし、作業開始時に「①現在地 ②判断の根拠 ③次の一手」を簡潔に宣言する。
    - **開発対象が「エージェント定義」の場合**: `docs/guidelines/agent_design_principles.md` も併せてロードし、本スキルの「6. 開発対象が『エージェント定義』の場合の追加手順」に従う。`coding_guidelines.md` はプログラムレイヤー（ツール）の実装にのみ適用する。
 2. **実装台帳の作成（再開可能性の確保）**: `docs/process/impl_progress.md` を開き、SW205のすべての `UNIT-ID`・ユニット名・対応要求を**転記**する（記憶から書かない）。SW205の依存関係を確認し、**依存されている側（下層）から順に**実装する順序を決めて台帳に反映する。
    - （目的: 実装状況をAIの一時記憶の外に置き、会話が中断してもコンテキストが尽きても、やり直しではなく続きから再開できるようにする。Phase 4は最も長く、最もコンテキストを消費するフェーズである）
@@ -29,6 +29,10 @@ description: DADAプロセスのPhase 4（実装・総合テスト報告）で�
    - 「手動」: スクリプト化しない確認（GUI・ブラウザ・実機接続等）を、AIがツールで実施し判定する。Product Ownerに実施を委ねない。期待値と照合できない主観はSWP6に書かず Phase 5 へ残す。
    - 「評価」: 本スキル「6.」の評価セット手順に従い、`eval_report.md` とSWP6の5.3節へ記録する。
    - 6.2の総合判定は、3.1の合否判定基準と5章の結果からAIが Pass または Fail を書く。空欄のまま完了報告しない。
+   - **報告書の読みやすさ推敲3ステップ（必須）**:
+     - **(Step 1)**: 今まで通りにSWP6の5〜6章を書き出し、`python tools/style_check.py snapshot --input docs/artifacts/SWP6_ソフトウェア総合テスト仕様書・報告書.md --summary` で推敲前の意味シグネチャを保存する。
+     - **(Step 2)**: スキル `.agents/skills/JP-Humanizer/SKILL.md` と `python tools/style_check.py lint --input docs/artifacts/SWP6_ソフトウェア総合テスト仕様書・報告書.md` を適用し、報告書の記述を自然な日本語へ更新する。
+     - **(Step 3)**: `python tools/style_check.py verify --input docs/artifacts/SWP6_ソフトウェア総合テスト仕様書・報告書.md` を実行し、推敲後の文書が元の意味（TC-ID・検査結果 Pass/Fail・数値・総合判定）を保持していることを自分自身で確認する。保持していない場合は書き直す。
 5. **機械チェック**: スキル `dada-check` を実行する。`python tools/dada_check.py all` のあと **`python tools/dada_check.py report`**。未実装ユニット、テストコードのない「自動」TC-ID、skipされたテスト、5〜6章の欠落を検出して解消する。
 6. **自己検閲への引き継ぎ**: まず `code-reviewer` でコードをレビューし、指摘を修正する。続けて `test-reviewer` の Phase 4 用の節でSWP6の5〜6章をレビューし、指摘を修正する。
 
@@ -69,6 +73,7 @@ description: DADAプロセスのPhase 4（実装・総合テスト報告）で�
 - [ ] 実装進捗台帳（`docs/process/impl_progress.md`）の全ユニットが「完了」になっている
 - [ ] 対応したバグがBUG101に記録され、原因と修正内容が書かれている
 - [ ] 設計に書かれていない機能・モジュールを勝手に追加していない
+- [ ] SWP6（総合テスト報告書 5〜6章）に対して `JP-Humanizer` スキルと `style_check.py` による読みやすさ推敲（Step 2）および元の意味保持の確認（Step 3）を実施した
 
 ## 6. 開発対象が「エージェント定義」の場合の追加手順（従来型プログラムの場合は本節を読み飛ばす）
 
@@ -78,7 +83,7 @@ description: DADAプロセスのPhase 4（実装・総合テスト報告）で�
 
    | レイヤー | 生成物 | 必須事項 |
    | :--- | :--- | :--- |
-   | 自然言語 | `.agents/skills/<name>/SKILL.md` | frontmatterに `name`（ディレクトリ名と一致・英小文字とハイフン）と `description`（**いつ使うか**を先頭に書く。他スキルと重複させない）を必ず置く。**手順に「思考過程を必ず出力する」と明示する**（Transparency）。出力形式（パス・見出し・報告の定型）を手順内に固定する（ACI）。1スキル1役割（Simplicity。執筆と評価を同居させない） |
+   | 自然言語 | `.agents/skills/<name>/SKILL.md` | frontmatterに `name`（ディレクトリ名と一致・英字から始まる英数字とハイフン）と `description`（**いつ使うか**を先頭に書く。他スキルと重複させない）を必ず置く。**手順に「思考過程を必ず出力する」と明示する**（Transparency）。出力形式（パス・見出し・報告の定型）を手順内に固定する（ACI）。1スキル1役割（Simplicity。執筆と評価を同居させない） |
    | 自然言語 | `.agents/AGENTS.md`（ルール） | 常時適用される不変条件のみを書く。手順は書かない |
    | 自然言語 | `references/` 配下の知識・ひな形 | スキルから参照されるファイル。参照元のパス表記と一致させる |
    | プログラム | `tools/<name>.py` 等 | ファイルヘッダに対応 `UNIT-ID`・`REQ-ID` を明記する。終了コードをSW205のACI仕様どおりに実装する |

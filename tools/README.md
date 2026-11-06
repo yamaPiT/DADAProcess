@@ -1,11 +1,14 @@
-# tools — DADAプロセスの検証ツール
+# tools（DADAプロセスの決定論的検証・文書ツール群）
 
-このディレクトリには、DADAプロセスの開発文書・ソースコード・エージェント定義を**機械的に検証**するツールを置きます。
+このディレクトリには、DADAプロセスの開発文書・ソースコード・エージェント定義・Office文書・日本語品質を**機械的に検証・変換**するツールを置きます。
 
 | ツール | 対象 | 使う場面 |
 | :--- | :--- | :--- |
 | `dada_check.py` | 開発文書（SW105 / SWP6 / SW205）とソースコード | **常時**（全Phaseの承認ゲート前） |
 | `agent_def_check.py` | エージェント定義の成果物（`SKILL.md`・参照パス・ツール・評価記録） | **開発対象がエージェント定義の場合**（Phase 3〜4） |
+| `office_io.py` | Office文書・PDF（`.docx` / `.xlsx` / `.pptx` / `.pdf`）と `.md` の相互変換・差分反映・プレゼン自動生成 | **Product Ownerが求めたとき、既存Office資産から開始するとき、または単体でOffice文書を編集するとき** |
+| `style_check.py` | 日本語推敲・AI-Slop（AIっぽい不自然な表現）検出・推敲前後の意味保持検証 | **常時**（開発文書の執筆3ステップ・レビュー3ステップ、および単体での文章推敲） |
+| `export_skillset.py` | 3種類のスキルセット（`dada-core` / `office-suite` / `jp-humanizer`）の独立切り出し | **特定のスキルセットだけを別リポジトリ・別プロジェクトへ切り出すとき** |
 
 ## なぜツールが必要か
 
@@ -69,7 +72,7 @@ python tools/dada_check.py all --summary
 | **Mid** | 品質を損なうが工程は進められる | 原則として解消する |
 | **要確認** | 機械では判定できず、人間またはAIの判断が必要 | 判断してから報告する |
 
-### `code` の照合方法 — 2通り
+### `code` の照合方法（2通り）
 
 `code` チェックは、UNIT-IDの実装確認を2通りの方法で行います。設計書（SW205）の記述によって自動的に切り替わります。
 
@@ -160,3 +163,50 @@ Pythonが利用できない環境では、各スキルに記述された**手動
 
 > [!WARNING]
 > **自律型では、機械チェックの実行が自律遷移の必須条件です**（`.agents/AGENTS.md` 第10.3節）。Pythonが使えず終了コードを取得できない場合は、自律遷移の条件を満たせないため、**承認ゲート型として人間の承認を求めてください**。
+
+## style_check.py（日本語推敲・AI-Slop検出・意味保持検証ツール）
+
+生成AIが書いた日本語文書に混入しやすい「AIっぽい不自然な表現（AI-Slop）」や「長文・冗長表現」を行番号付きで機械検出します。さらに、スキル `.agents/skills/JP-Humanizer/SKILL.md` による推敲前後で**元の意味（ID・数値・単位・表構造・見出し・否定極性）が保持されているか**を決定論的に検証します（Python標準ライブラリのみで動作、LLMトークン消費ゼロ）。
+
+### 使い方（執筆時の3ステップ）
+
+```bash
+# Step 1: 下書き執筆直後に意味シグネチャを保存する
+python tools/style_check.py snapshot --input docs/artifacts/SW105_ソフトウェア要求仕様書.md --summary
+
+# Step 2: AIっぽい表現・長文・冗長表現を検出し、JP-Humanizer スキルで推敲する
+python tools/style_check.py lint --input docs/artifacts/SW105_ソフトウェア要求仕様書.md
+
+# Step 3: 推敲後の文書が元の意味シグネチャを保持しているか検証する
+python tools/style_check.py verify --input docs/artifacts/SW105_ソフトウェア要求仕様書.md
+```
+
+- 終了コード: `0` = OK / `1` = 修正または確認が必要（`lint` で Mid 指摘あり、または `verify` で High 欠陥あり） / `2` = 実行エラー
+
+## office_io.py（Office文書・PDF 決定論的I/Oツール）
+
+Product Ownerから求められた場合や既存のOffice文書から差分開発を始める場合に、LLMのトークンを消費せず相互変換・差分パッチ・プレゼン生成（`PRES101`）を行うツールです（詳細は `.agents/skills/office-document/SKILL.md` 参照）。
+
+```bash
+# テンプレート確認 / 既存文書インポート / テンプレート適用エクスポート / 差分パッチ / プレゼン生成
+python tools/office_io.py init-templates --summary
+python tools/office_io.py import --input <既存文書> --output <出力.md> --summary
+python tools/office_io.py export --input <入力.md> --output <出力ファイル> --summary
+python tools/office_io.py patch --base <既存Office文書> --input <改訂.md> --output <出力ファイル> --summary
+python tools/office_io.py gen-pres --artifacts-dir docs/artifacts --output docs/artifacts/PRES101_開発成果プレゼンテーション.pptx --summary
+```
+
+## export_skillset.py（3種類のスキルセットの独立切り出しツール）
+
+本リポジトリに含まれる3種類のスキルセット（`dada-core` / `office-suite` / `jp-humanizer`）から、必要なスキル・ツール・知識・テンプレート一式を別ディレクトリへ自動抽出し、単体リポジトリとして使えるようにします。
+
+```bash
+# スキルセット一覧と構成ファイルの確認
+python tools/export_skillset.py list
+
+# Office文書スキルセットだけを切り出す
+python tools/export_skillset.py export --set office-suite --out ../DADA-Office-Suite --summary
+
+# JP-Humanizer（自然な日本語への推敲スキルセット）だけを切り出す
+python tools/export_skillset.py export --set jp-humanizer --out ../JP-Humanizer-Skill --summary
+```

@@ -8,6 +8,7 @@
 | :--- | :--- |
 | `IEEE29148_2018_SRS.md` | IEEE 29148:2018 準拠の要求仕様書テンプレート |
 | `agent/` | **エージェント定義開発用**のひな形一式（Phase 1〜3）。詳細は `docs/templates/agent/README.md` |
+| `office/` | **Office文書（Word / Excel / PowerPoint）変換用**の標準テンプレート一式（`Normal.dotm`, `Blank.potx`, `template_sheet.xlsx`）。詳細は `docs/templates/office/README.md` |
 
 ## 運用ルール
 
