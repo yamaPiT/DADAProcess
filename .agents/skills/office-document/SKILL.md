@@ -1,6 +1,6 @@
 ---
 name: office-document
-description: Product Ownerから既存のOffice文書・PDF（.docx/.xlsx/.pptx/.pdf）の読み込み、対話しながらの直接編集・差分改訂、または完成したMarkdown成果物のOffice文書・PDFへの変換やプレゼンテーション資料（.pptx）の作成を求められた時に使用します。単体タスクとしてもDADAプロセス内でも使用できます。
+description: Product Ownerから既存のOffice文書・PDF（.docx/.xlsx/.pptx/.pdf）の読み込み、対話しながらの直接編集・差分改訂、または完成したMarkdown成果物のOffice文書・PDFへの変換を求められた時に使用します。単体タスクとしてもDADAプロセス内でも使用できます。
 ---
 
 # Office文書・PDF 入出力スペシャリスト (Office Document Specialist)
@@ -12,7 +12,7 @@ DADAプロセスの開発工程内でのオンデマンド入出力だけでな�
 
 1. **2つの利用モード（DADAプロセス内 / スタンドアロン利用）**:
    - **DADAプロセス内**: 基本成果物は `docs/artifacts/` 配下の `.md` ファイルです。Product Ownerから明示的な指示がない限り、通常のPhase進行中に自動でOffice文書を生成してはなりません。
-   - **スタンドアロン利用（単体でのOffice文書編集・作成）**: 「このパワポ（Word/Excel）を議論しながら編集したい」「`.md` からパワポを作って」と依頼された場合は、DADAプロセスを起動せず本スキル単体で作業します（下記「作業手順 E」参照）。
+   - **スタンドアロン利用（単体でのOffice文書編集・作成）**: 「このパワポ（Word/Excel）を議論しながら編集したい」「`.md` からパワポを作って」と依頼された場合は、DADAプロセスを起動せず本スキル単体で作業します（下記「作業手順 D」参照）。
 2. **LLMを介さないツールへの完全委譲（トークン節約）**:
    - Office文書の生成・変換・差分反映・構造検査を行う際、**AIが元の `.md` やXMLをコンテキストに全文読み込んで変換コードを書いてはなりません**。必ず決定論的ツール `tools/office_io.py` に `--summary` オプションを付けて実行し、1行の要約出力のみで結果を確認してください。
 3. **標準テンプレートの自動適用**:
@@ -27,7 +27,7 @@ DADAプロセスの開発工程内でのオンデマンド入出力だけでな�
 
 ### A. 既存のOffice文書・PDFを読み込むとき（Import / 差分開発の入口）
 
-既存の Word仕様書、Excel管理表、PowerPoint提案書、PDF資料などをDADAプロセスの入力として読み込む場合、または一部を改訂する差分開発を行う場合は、まず `.md` に変換します。
+既存の Word仕様書・Excel管理表・PowerPoint提案書・PDF資料などをDADAプロセスの入力として読み込む場合、または差分開発を行う場合は、まず `.md` に変換します。
 
 1. **Markdownへの決定論的変換**:
    - `python tools/office_io.py import --input <既存ファイルのパス> --output <出力先.mdのパス> --summary`
@@ -49,31 +49,20 @@ DADAプロセスの開発工程内でのオンデマンド入出力だけでな�
 Product Ownerから「Word（またはExcel / パワポ / PDF）に出力して」と求められた場合は、以下のコマンドを実行します（`.md` をAIが読み直す必要はありません）。
 
 1. **単一ファイルのエクスポート**:
+   - DADAプロセスの開発成果物を出力する場合、出力先はすべて **`docs/artifacts/office/`** 配下に統一します（`docs/artifacts/` 直下には `.md` のみを置きます）。
    - 標準テンプレート（`Normal.dotm` / `Blank.potx` / `template_sheet.xlsx`）を使用する場合:
-     - `python tools/office_io.py export --input <入力.mdパス> --output <出力ファイルパス> --summary`
+     - `python tools/office_io.py export --input <入力.mdパス> --output docs/artifacts/office/<出力ファイル名> --summary`
    - 個別テンプレートを指定する場合:
-     - `python tools/office_io.py export --input <入力.mdパス> --output <出力ファイルパス> --template <テンプレートパス> --summary`
+     - `python tools/office_io.py export --input <入力.mdパス> --output docs/artifacts/office/<出力ファイル名> --template <テンプレートパス> --summary`
+   - Markdown内の **Mermaid図（`flowchart` / `sequenceDiagram` 等）** は、WordとPowerPointでは**編集・移動が可能なネイティブ図形と矢印コネクタ**へ自動変換されます。PDF（`.pdf`）ではベクター図形として描画されます。
 2. **全成果物の一括エクスポート**:
-   - Product Ownerから「成果物一式をOffice文書に変換して」と求められた場合は、1回のコマンドで一括変換します。
+   - Product Ownerから「成果物一式をOffice文書に変換して」と求められた場合は、1回のコマンドで `docs/artifacts/office/` へ一括変換します。
      - `python tools/office_io.py batch-export --artifacts-dir docs/artifacts --out-dir docs/artifacts/office --summary`
 3. **出力後の検証**:
    - `export` 実行時に自動で1行の検査サマリ（`OFFICE-INSPECT: OK | ...`）が出力されます。`WARN` が出た場合のみ `python tools/office_io.py inspect --input <出力ファイルパス>` で詳細を確認します。
    - 出力が `.pdf` の場合は、`read_file` で生成されたPDFを開き、レイアウト崩れがないか視覚確認します。
 
-### D. 開発したプログラムのプレゼンテーション資料（`.pptx`）を作成するとき
-
-Product Ownerから「開発したプログラムのプレゼン資料をパワポで作って」と求められた場合は、**トークン節約のため、まずツールで `SW105` / `SW205` / `SWP6` から自動抽出・生成**します。
-
-1. **ツールによる自動抽出・PowerPoint生成（LLMトークン消費ゼロ）**:
-   - 以下のコマンドで `SW105`・`SW205`・`SWP6` の要点を自動抽出し、`docs/artifacts/PRES101_開発成果プレゼンテーション.md` と `Blank.potx` 適用の `.pptx` を一括生成します。
-     - `python tools/office_io.py gen-pres --summary`
-2. **内容を推敲・カスタマイズする場合**:
-   - 生成された `docs/artifacts/PRES101_開発成果プレゼンテーション.md`（またはひな形 `.agents/skills/office-document/references/PRES101_skeleton.md`）のみを編集します。その後、以下のコマンドで `.pptx` を再出力します（元の仕様書群を読み直す必要はありません）。
-     - `python tools/office_io.py export --input docs/artifacts/PRES101_開発成果プレゼンテーション.md --output docs/artifacts/PRES101_開発成果プレゼンテーション.pptx --summary`
-3. **レイアウト溢れの確認**:
-   - `python tools/office_io.py inspect --input docs/artifacts/PRES101_開発成果プレゼンテーション.pptx --summary` を実行し、`warnings=0`（1スライドあたりの文字量・表行数が適正）であることを確認します。
-
-### E. スタンドアロン利用：Office文書（パワポ・Word・Excel）を対話しながら編集するとき
+### D. スタンドアロン利用：Office文書（パワポ・Word・Excel）を対話しながら編集するとき
 
 DADAプロセスの開発工程ではなく、Product Ownerが既存の `.pptx` / `.docx` / `.xlsx` を渡して「ディスカッションしながらこのパワポを編集したい」と求めた場合は、以下の高速ループで対話編集を行います。
 

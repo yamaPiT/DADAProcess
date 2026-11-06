@@ -15,7 +15,7 @@
 ## 運用ルール
 
 1. **自動適用**:
-   `python tools/office_io.py export` や `gen-pres`、`batch-export` を実行する際、`--template` を省略すると本ディレクトリの **`Normal.dotm`（Word用）**、**`Blank.potx`（PowerPoint用）**、**`template_sheet.xlsx`（Excel用）** が自動適用されます。
+   `python tools/office_io.py export` や `batch-export` を実行する際、`--template` を省略すると本ディレクトリの **`Normal.dotm`（Word用）**、**`Blank.potx`（PowerPoint用）**、**`template_sheet.xlsx`（Excel用）** が自動適用されます。
 2. **個別テンプレートの指定**:
    別の企業テンプレートを一時的に適用したい場合は `--template <パス>` で指定します（`.dotm` / `.dotx` / `.docx` / `.potx` / `.potm` / `.pptx` / `.xlsx` に対応）。
 3. **同期の更新**:

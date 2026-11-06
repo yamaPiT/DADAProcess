@@ -59,7 +59,7 @@ description: ソフトウェアの新規開発・機能追加・修正・バグ�
 ## 共通原則
 - **プロセスの遵守**: 基本原則（承認ゲート、アテンション-リセット、不変条件と手順の分離、機械的検証の委譲、スケール制御、ID体系、承認の定義等）はすべてワークスペースルール `.agents/AGENTS.md` に従うこと。
 - **ドキュメント準拠性**: 基本は `docs/guidelines/dada_document_guidelines.md` に従う。ただしProduct Ownerから「IEEE29148_2018に準拠」等の規格指定や、「企業のテンプレートに従う」等の指示があった場合は、`docs/templates/` 配下の該当ひな形ファイルを読み込み、その構造を絶対的に優先すること。
-- **Office文書（Word / Excel / PowerPoint / PDF）のオンデマンド取り扱い**: トークン消費量を節約するため、DADAの開発は基本として `.md` 形式のみで進行し、`docs/artifacts/` には `.md` ファイルのみを作成する。既存のOffice資産から開発・差分改訂を始める場合や、Product OwnerからOffice文書・プレゼン資料への変換を求められた場合に限り、スキル `.agents/skills/office-document/SKILL.md` と `tools/office_io.py` を使用する。
+- **Office文書（Word / Excel / PowerPoint / PDF）のオンデマンド取り扱い**: トークン消費量を節約するため、DADAの開発は基本として `.md` 形式のみで進行し、`docs/artifacts/` には `.md` ファイルのみを作成する。既存のOffice資産から開発・差分改訂を始める場合や、Product OwnerからOffice文書への変換を求められた場合に限り、スキル `.agents/skills/office-document/SKILL.md` と `tools/office_io.py` を使用する。
 - **開発対象がエージェント定義の場合の自動参照**: Phase 0で開発対象が「エージェント定義」と判定された場合、Product Ownerの指定を待たずに `docs/guidelines/agent_design_principles.md` と `docs/templates/agent/` 配下のひな形を参照する。Product Ownerが別のテンプレートを明示した場合のみ、そちらを優先する。
 - **進行状況の常時表示**: DADAプロセス実行中は、**すべての応答の末尾に**以下の1行を表示し、迷子を防ぐこと。
 

@@ -16,8 +16,7 @@ DADA Process Office文書・PDF 決定論的入出力ツール (office_io.py)
     python tools/office_io.py import       --input <office_or_pdf> --output <md_path> [--summary]
     python tools/office_io.py export       --input <md_path> --output <office_or_pdf> [--template <tpl_path>] [--title <title>] [--summary]
     python tools/office_io.py patch        --base <existing_office> --input <updated_md> --output <out_office> [--summary]
-    python tools/office_io.py batch-export [--artifacts-dir docs/artifacts] [--out-dir docs/artifacts/office] [--formats docx,xlsx,pptx,pdf] [--summary]
-    python tools/office_io.py gen-pres     [--artifacts-dir docs/artifacts] [--md-out docs/artifacts/PRES101_開発成果プレゼンテーション.md] [--pptx-out docs/artifacts/PRES101_開発成果プレゼンテーション.pptx] [--template <tpl_path>] [--summary]
+    python tools/office_io.py batch-export [--artifacts-dir docs/artifacts] [--out-dir docs/artifacts/office] [--formats docx,xlsx,pdf] [--summary]
     python tools/office_io.py inspect      --input <office_or_pdf> [--summary]
 
 終了コード:
@@ -300,6 +299,548 @@ def strip_heading_number(text: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Mermaid 図パーサ & 2D自動レイアウトエンジン（編集可能なネイティブOffice図形変換用）
+# ---------------------------------------------------------------------------
+
+def _clean_mermaid_label(raw: str) -> str:
+    s = raw.strip().strip("\"'")
+    s = s.replace("<br/>", "\n").replace("<br />", "\n").replace("<br>", "\n")
+    s = re.sub(r"</?[^>]+>", "", s)
+    return s.strip()
+
+
+def _parse_mermaid_node_token(token: str, nodes: Dict[str, Dict[str, str]], order: List[str]) -> Optional[str]:
+    """Mermaidのノードトークン（例: `A["要求定義"]`, `G{"判定"}`, `DB[("SW105")]`, `[*]`）を解析して登録する。"""
+    t = token.strip()
+    if not t:
+        return None
+    if t == "[*]":
+        nid = "__STAR__"
+        if nid not in nodes:
+            nodes[nid] = {"id": nid, "label": "開始/終了", "shape": "oval"}
+            order.append(nid)
+        return nid
+
+    patterns = [
+        (r'^([A-Za-z0-9_.\-]+)\s*\(\[\s*(.+?)\s*\]\)$', "round"),
+        (r'^([A-Za-z0-9_.\-]+)\s*\[\(\s*(.+?)\s*\)\]$', "cylinder"),
+        (r'^([A-Za-z0-9_.\-]+)\s*\(\(\s*(.+?)\s*\)\)$', "oval"),
+        (r'^([A-Za-z0-9_.\-]+)\s*\{\{\s*(.+?)\s*\}\}$', "diamond"),
+        (r'^([A-Za-z0-9_.\-]+)\s*\{\s*(.+?)\s*\}$', "diamond"),
+        (r'^([A-Za-z0-9_.\-]+)\s*\[\s*(.+?)\s*\]$', "rect"),
+        (r'^([A-Za-z0-9_.\-]+)\s*\(\s*(.+?)\s*\)$', "round"),
+    ]
+    for pat, shp in patterns:
+        m = re.match(pat, t)
+        if m:
+            nid = m.group(1).strip()
+            lbl = _clean_mermaid_label(m.group(2))
+            if nid not in nodes:
+                nodes[nid] = {"id": nid, "label": lbl or nid, "shape": shp}
+                order.append(nid)
+            else:
+                if lbl and nodes[nid]["label"] == nid:
+                    nodes[nid]["label"] = lbl
+                    nodes[nid]["shape"] = shp
+            return nid
+
+    m_id = re.match(r'^([A-Za-z0-9_.\-]+)$', t)
+    if m_id:
+        nid = m_id.group(1)
+        if nid not in nodes:
+            nodes[nid] = {"id": nid, "label": nid, "shape": "rect"}
+            order.append(nid)
+        return nid
+    return None
+
+
+def parse_mermaid_diagram(mermaid_code: str) -> Dict[str, Any]:
+    """
+    Mermaid記法（flowchart / graph / sequenceDiagram / stateDiagram / erDiagram / classDiagram）を解析し、
+    ノードとエッジ（またはシーケンスの参加者とメッセージ）の構造データを返す。
+    """
+    raw_lines = mermaid_code.replace("\r\n", "\n").split("\n")
+    lines: List[str] = []
+    for ln in raw_lines:
+        s = ln.strip()
+        if not s or s.startswith("%%"):
+            continue
+        if re.match(r"^(classDef|class|style|linkStyle|click|direction)\b", s):
+            continue
+        lines.append(s)
+
+    if not lines:
+        return {"kind": "empty", "direction": "TD", "nodes": [], "edges": []}
+
+    first = lines[0]
+    if first.startswith("sequenceDiagram"):
+        participants: Dict[str, str] = {}
+        part_order: List[str] = []
+        messages: List[Dict[str, Any]] = []
+
+        def _ensure_part(pid: str, label: Optional[str] = None) -> None:
+            p_clean = pid.strip()
+            if not p_clean:
+                return
+            if p_clean not in participants:
+                participants[p_clean] = _clean_mermaid_label(label) if label else p_clean
+                part_order.append(p_clean)
+            elif label:
+                participants[p_clean] = _clean_mermaid_label(label)
+
+        for s in lines[1:]:
+            if re.match(r"^(autonumber|activate|deactivate|loop|alt|else|opt|par|rect|end|note\b)", s, re.IGNORECASE):
+                continue
+            m_p = re.match(r"^(?:participant|actor)\s+([^\s]+)(?:\s+as\s+(.+))?$", s, re.IGNORECASE)
+            if m_p:
+                _ensure_part(m_p.group(1), m_p.group(2))
+                continue
+            m_msg = re.match(r"^([^\s\-:]+)\s*(-->>|->>|-->|->|--x|-x|--\)|-\))\+?-?\s*([^\s\-:]+)\s*:\s*(.*)$", s)
+            if m_msg:
+                src, arrow, dst, msg = m_msg.group(1), m_msg.group(2), m_msg.group(3), m_msg.group(4)
+                _ensure_part(src)
+                _ensure_part(dst)
+                messages.append({
+                    "src": src,
+                    "dst": dst,
+                    "label": _clean_mermaid_label(msg),
+                    "dashed": arrow.startswith("--"),
+                })
+
+        return {
+            "kind": "sequence",
+            "direction": "TD",
+            "participants": [{"id": pid, "label": participants[pid]} for pid in part_order],
+            "messages": messages,
+        }
+
+    direction = "TD"
+    m_dir = re.match(r"^(?:flowchart|graph)\s+(TB|TD|BT|RL|LR)\b", first, re.IGNORECASE)
+    if m_dir:
+        d = m_dir.group(1).upper()
+        direction = "LR" if d in ("LR", "RL") else "TD"
+    elif first.startswith(("erDiagram", "classDiagram")):
+        direction = "LR"
+
+    nodes: Dict[str, Dict[str, str]] = {}
+    node_order: List[str] = []
+    edges: List[Dict[str, Any]] = []
+
+    edge_split_re = re.compile(
+        r"\s*(<\-\.\->|<\-\->|\-\.\->|\-\.[^\n]*?\.\->|==>|===|\-\-\->|\-\->|\-\-[^\n\-]*?\-\->|\-\-\s+[^\n\-]+?\s+\-\->|\-\-\||\|\-\->|\-\->\|[^|]*\||\|\-\.\->|\-\.\->\|[^|]*\||\|\|..\{|\|\|\-\-o\{|\|\|\-\-\|\||\}o\-\-\|\||<\|--|\*--|o--|\-\-\-)\s*"
+    )
+
+    body_lines = lines[1:] if re.match(r"^(flowchart|graph|stateDiagram|erDiagram|classDiagram)", first, re.IGNORECASE) else lines
+
+    for s in body_lines:
+        if s == "end" or s.startswith("{") or s == "}":
+            continue
+        m_sub = re.match(r"^subgraph\s+(?:([A-Za-z0-9_.\-]+)\s*\[\s*(.+?)\s*\]|(.+))$", s)
+        if m_sub:
+            continue
+        m_state_as = re.match(r'^state\s+"([^"]+)"\s+as\s+([A-Za-z0-9_.\-]+)$', s)
+        if m_state_as:
+            lbl, nid = _clean_mermaid_label(m_state_as.group(1)), m_state_as.group(2)
+            nodes[nid] = {"id": nid, "label": lbl, "shape": "round"}
+            if nid not in node_order:
+                node_order.append(nid)
+            continue
+
+        # 状態遷移やER図の `: ラベル` サフィックス対応
+        trailing_label = ""
+        s_work = s
+        m_colon = re.match(r"^(.+?(?:-->|-\.->|\|\|--o\{|\|\|--\|\||\}o--\|\||<\|--|\*--|o--).+?)\s*:\s*(.+)$", s_work)
+        if m_colon:
+            s_work = m_colon.group(1).strip()
+            trailing_label = _clean_mermaid_label(m_colon.group(2))
+
+        # エッジ表現の正規化（`-->|label|` や `-- label -->` を共通トークン化）
+        arrow_pat = re.compile(
+            r"(\-\.\->\s*\|[^|]*\||"
+            r"\-\->\s*\|[^|]*\||"
+            r"==>\s*\|[^|]*\||"
+            r"\-\.\s+[^.\n]+?\s+\.\->|"
+            r"\-\-\s+[^-\n]+?\s+\-\->|"
+            r"<\-\.\->|<\-\->|\-\.\->|==>|\-\-\->|\-\->|\-\-\-|"
+            r"\|\|\-\-o\{|\|\|\-\-\|\||\}o\-\-\|\||<\|--|\*--|o--)"
+        )
+        parts = arrow_pat.split(s_work)
+        if len(parts) >= 3:
+            prev_id = _parse_mermaid_node_token(parts[0], nodes, node_order)
+            idx = 1
+            while idx + 1 < len(parts):
+                raw_arrow = parts[idx].strip()
+                target_tok = parts[idx + 1].strip()
+                nxt_id = _parse_mermaid_node_token(target_tok, nodes, node_order)
+                lbl = ""
+                m_pipe = re.search(r"\|([^|]+)\|", raw_arrow)
+                if m_pipe:
+                    lbl = _clean_mermaid_label(m_pipe.group(1))
+                else:
+                    m_mid = re.match(r"^(?:\-\-|\-\.)\s+(.+?)\s+(?:\-\->|\.\->)$", raw_arrow)
+                    if m_mid:
+                        lbl = _clean_mermaid_label(m_mid.group(1))
+                if not lbl and trailing_label and idx + 2 >= len(parts):
+                    lbl = trailing_label
+                dashed = ("-." in raw_arrow or ".->" in raw_arrow)
+                directed = (">" in raw_arrow or "{" in raw_arrow or "<|" in raw_arrow)
+                if prev_id and nxt_id:
+                    edges.append({
+                        "src": prev_id,
+                        "dst": nxt_id,
+                        "label": lbl,
+                        "dashed": dashed,
+                        "directed": directed,
+                    })
+                prev_id = nxt_id
+                idx += 2
+        else:
+            _parse_mermaid_node_token(s_work, nodes, node_order)
+
+    return {
+        "kind": "flowchart",
+        "direction": direction,
+        "nodes": [nodes[nid] for nid in node_order],
+        "edges": edges,
+    }
+
+
+def layout_mermaid_diagram(parsed: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    解析済みMermaid図を (0..1000, 0..1000) の正規化座標系にレイアウトする。
+    戻り値には boxes (id, label, shape, x, y, w, h) と connectors (x1, y1, x2, y2, label, dashed, directed) を含む。
+    """
+    kind = parsed.get("kind", "empty")
+    if kind == "sequence":
+        parts = parsed.get("participants", [])
+        msgs = parsed.get("messages", [])
+        if not parts:
+            return {"boxes": [], "connectors": [], "aspect": 0.45}
+
+        p_cnt = len(parts)
+        m_cnt = len(msgs)
+        margin_x = 60.0
+        usable_w = 1000.0 - 2 * margin_x
+        box_w = min(180.0, max(90.0, usable_w / max(p_cnt, 1) * 0.72))
+        box_h = 95.0
+        top_y = 35.0
+
+        boxes: List[Dict[str, Any]] = []
+        lifeline_x: Dict[str, float] = {}
+        for i, p in enumerate(parts):
+            if p_cnt == 1:
+                cx = 500.0
+            else:
+                cx = margin_x + box_w / 2 + i * ((usable_w - box_w) / (p_cnt - 1))
+            bx = cx - box_w / 2
+            lifeline_x[p["id"]] = cx
+            boxes.append({
+                "id": p["id"],
+                "label": p["label"],
+                "shape": "participant",
+                "x": bx,
+                "y": top_y,
+                "w": box_w,
+                "h": box_h,
+            })
+
+        connectors: List[Dict[str, Any]] = []
+        start_msg_y = top_y + box_h + 65.0
+        avail_msg_h = 940.0 - start_msg_y
+        step_y = min(130.0, avail_msg_h / max(m_cnt, 1))
+        bottom_y = start_msg_y + max(m_cnt - 1, 0) * step_y + 45.0
+
+        # ライフライン（破線・矢印なし）
+        for p in parts:
+            cx = lifeline_x[p["id"]]
+            connectors.append({
+                "x1": cx, "y1": top_y + box_h,
+                "x2": cx, "y2": bottom_y,
+                "label": "", "dashed": True, "directed": False,
+            })
+
+        # メッセージ矢印
+        for m_i, msg in enumerate(msgs):
+            y = start_msg_y + m_i * step_y
+            x1 = lifeline_x.get(msg["src"], 200.0)
+            x2 = lifeline_x.get(msg["dst"], 800.0)
+            if abs(x1 - x2) < 5.0:
+                x2 = min(950.0, x1 + 110.0)
+            connectors.append({
+                "x1": x1, "y1": y,
+                "x2": x2, "y2": y,
+                "label": msg.get("label", ""),
+                "dashed": bool(msg.get("dashed")),
+                "directed": True,
+            })
+
+        aspect = min(0.85, max(0.38, 0.22 + 0.065 * m_cnt))
+        return {"boxes": boxes, "connectors": connectors, "aspect": aspect}
+
+    nodes = parsed.get("nodes", [])
+    edges = parsed.get("edges", [])
+    if not nodes:
+        return {"boxes": [], "connectors": [], "aspect": 0.4}
+
+    direction = parsed.get("direction", "TD")
+    node_ids = [n["id"] for n in nodes]
+    id_to_idx = {nid: i for i, nid in enumerate(node_ids)}
+    adj: Dict[str, List[str]] = {nid: [] for nid in node_ids}
+    in_deg: Dict[str, int] = {nid: 0 for nid in node_ids}
+
+    for e in edges:
+        u, v = e["src"], e["dst"]
+        if u in adj and v in adj and u != v:
+            # 後方エッジ（既に登場順が逆のループバック）はランク計算のDAGから除外して無限ループを防ぐ
+            if id_to_idx[u] < id_to_idx[v] or in_deg[v] == 0:
+                adj[u].append(v)
+                in_deg[v] += 1
+
+    ranks: Dict[str, int] = {nid: 0 for nid in node_ids}
+    queue = [nid for nid in node_ids if in_deg[nid] == 0]
+    if not queue:
+        queue = [node_ids[0]]
+    visited = set()
+    while queue:
+        curr = queue.pop(0)
+        visited.add(curr)
+        for nxt in adj.get(curr, []):
+            if ranks[nxt] < ranks[curr] + 1:
+                ranks[nxt] = min(ranks[curr] + 1, len(node_ids) - 1)
+            in_deg[nxt] -= 1
+            if in_deg[nxt] <= 0 and nxt not in visited:
+                queue.append(nxt)
+
+    # 1列に長すぎる場合（例: 8段以上の縦一列）は複数列へ折り返して視認性を高める
+    max_rank = max(ranks.values()) if ranks else 0
+    if max_rank >= 7 and len(nodes) >= 8:
+        wrap_cols = 4 if direction == "LR" else 5
+        for idx, nid in enumerate(node_ids):
+            ranks[nid] = idx // wrap_cols
+
+    layers: Dict[int, List[Dict[str, str]]] = {}
+    for n in nodes:
+        r = ranks.get(n["id"], 0)
+        layers.setdefault(r, []).append(n)
+
+    sorted_ranks = sorted(layers.keys())
+    num_layers = len(sorted_ranks)
+    max_in_layer = max(len(layers[r]) for r in sorted_ranks) if sorted_ranks else 1
+
+    boxes = []
+    box_map: Dict[str, Dict[str, Any]] = {}
+    pad_x, pad_y = 45.0, 45.0
+    usable_w = 1000.0 - 2 * pad_x
+    usable_h = 1000.0 - 2 * pad_y
+
+    if direction == "LR":
+        col_step = usable_w / max(num_layers, 1)
+        box_w = min(210.0, max(95.0, col_step * 0.68))
+        for c_i, r_key in enumerate(sorted_ranks):
+            layer_nodes = layers[r_key]
+            m_cnt = len(layer_nodes)
+            row_step = usable_h / max(m_cnt, 1)
+            box_h = min(150.0, max(75.0, row_step * 0.66))
+            cx = pad_x + (c_i + 0.5) * col_step
+            for r_i, nd in enumerate(layer_nodes):
+                cy = pad_y + (r_i + 0.5) * row_step
+                b = {
+                    "id": nd["id"],
+                    "label": nd["label"],
+                    "shape": nd["shape"],
+                    "x": cx - box_w / 2,
+                    "y": cy - box_h / 2,
+                    "w": box_w,
+                    "h": box_h,
+                    "cx": cx,
+                    "cy": cy,
+                }
+                boxes.append(b)
+                box_map[nd["id"]] = b
+        aspect = min(0.75, max(0.32, 0.18 * max_in_layer + 0.12))
+    else:
+        row_step = usable_h / max(num_layers, 1)
+        box_h = min(135.0, max(65.0, row_step * 0.64))
+        for r_i, r_key in enumerate(sorted_ranks):
+            layer_nodes = layers[r_key]
+            m_cnt = len(layer_nodes)
+            col_step = usable_w / max(m_cnt, 1)
+            box_w = min(240.0, max(105.0, col_step * 0.72))
+            cy = pad_y + (r_i + 0.5) * row_step
+            for c_i, nd in enumerate(layer_nodes):
+                cx = pad_x + (c_i + 0.5) * col_step
+                b = {
+                    "id": nd["id"],
+                    "label": nd["label"],
+                    "shape": nd["shape"],
+                    "x": cx - box_w / 2,
+                    "y": cy - box_h / 2,
+                    "w": box_w,
+                    "h": box_h,
+                    "cx": cx,
+                    "cy": cy,
+                }
+                boxes.append(b)
+                box_map[nd["id"]] = b
+        aspect = min(0.85, max(0.36, 0.11 * num_layers + 0.12))
+
+    def _border_point(b_from: Dict[str, Any], b_to: Dict[str, Any]) -> Tuple[float, float, float, float]:
+        dx = b_to["cx"] - b_from["cx"]
+        dy = b_to["cy"] - b_from["cy"]
+        if abs(dx) > abs(dy) * 1.15:
+            if dx >= 0:
+                return (b_from["x"] + b_from["w"], b_from["cy"], b_to["x"], b_to["cy"])
+            return (b_from["x"], b_from["cy"], b_to["x"] + b_to["w"], b_to["cy"])
+        else:
+            if dy >= 0:
+                return (b_from["cx"], b_from["y"] + b_from["h"], b_to["cx"], b_to["y"])
+            return (b_from["cx"], b_from["y"], b_to["cx"], b_to["y"] + b_to["h"])
+
+    connectors = []
+    for e in edges:
+        b_u = box_map.get(e["src"])
+        b_v = box_map.get(e["dst"])
+        if not b_u or not b_v or b_u["id"] == b_v["id"]:
+            continue
+        x1, y1, x2, y2 = _border_point(b_u, b_v)
+        connectors.append({
+            "x1": x1, "y1": y1,
+            "x2": x2, "y2": y2,
+            "label": e.get("label", ""),
+            "dashed": bool(e.get("dashed")),
+            "directed": bool(e.get("directed", True)),
+        })
+
+    return {"boxes": boxes, "connectors": connectors, "aspect": aspect}
+
+
+def _add_mermaid_diagram_docx(doc: Any, mermaid_code: str, diagram_idx: int = 1) -> bool:
+    """
+    Mermaid図をWord (.docx) 内で直接クリック・テキスト編集・移動が可能なネイティブVML図形グループ
+    (<w:pict><v:group>) として段落に挿入する。
+    """
+    from xml.sax.saxutils import escape
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml import parse_xml
+    from docx.shared import Pt
+
+    parsed = parse_mermaid_diagram(mermaid_code)
+    layout = layout_mermaid_diagram(parsed)
+    boxes = layout.get("boxes", [])
+    connectors = layout.get("connectors", [])
+    if not boxes:
+        return False
+
+    canvas_w_pt = 450.0
+    canvas_h_pt = round(max(150.0, min(380.0, canvas_w_pt * float(layout.get("aspect", 0.48)))), 1)
+    coord_w = 4500
+    coord_h = int(round(canvas_h_pt * 10))
+
+    vml_parts: List[str] = [
+        f'<w:pict xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+        f'xmlns:v="urn:schemas-microsoft-com:vml" '
+        f'xmlns:o="urn:schemas-microsoft-com:office:office">',
+        f'<v:group id="mermaid_grp_{diagram_idx}" '
+        f'style="width:{canvas_w_pt}pt;height:{canvas_h_pt}pt;mso-position-horizontal:center" '
+        f'coordsize="{coord_w},{coord_h}">',
+        f'<v:rect id="mermaid_bg_{diagram_idx}" '
+        f'style="position:absolute;left:0;top:0;width:{coord_w};height:{coord_h}" '
+        f'fillcolor="#FAFCFF" strokecolor="#CBD5E0" strokeweight="0.75pt"/>',
+    ]
+
+    # 1. エッジ（矢印・コネクタ線）とエッジラベルを描画
+    for c_i, conn in enumerate(connectors, start=1):
+        x1 = int(round(conn["x1"] / 1000.0 * coord_w))
+        y1 = int(round(conn["y1"] / 1000.0 * coord_h))
+        x2 = int(round(conn["x2"] / 1000.0 * coord_w))
+        y2 = int(round(conn["y2"] / 1000.0 * coord_h))
+        dash_attr = ' dashstyle="dash"' if conn.get("dashed") else ""
+        arrow_attr = ' endarrow="block"' if conn.get("directed", True) else ""
+        stroke_col = "#6C757D" if (conn.get("dashed") and not conn.get("directed")) else "#2C5282"
+        vml_parts.append(
+            f'<v:line id="m_edge_{diagram_idx}_{c_i}" style="position:absolute" '
+            f'from="{x1},{y1}" to="{x2},{y2}" strokecolor="{stroke_col}" strokeweight="1.2pt">'
+            f'<v:stroke{dash_attr}{arrow_attr}/></v:line>'
+        )
+        lbl = conn.get("label", "").strip()
+        if lbl:
+            mx = int((x1 + x2) / 2)
+            my = int((y1 + y2) / 2)
+            lw = min(1400, max(520, len(lbl) * 110))
+            lh = 220
+            lx = max(20, min(coord_w - lw - 20, mx - lw // 2))
+            ly = max(10, min(coord_h - lh - 10, my - lh - 10 if abs(y1 - y2) < 40 else my - lh // 2))
+            vml_parts.append(
+                f'<v:rect id="m_elbl_{diagram_idx}_{c_i}" '
+                f'style="position:absolute;left:{lx};top:{ly};width:{lw};height:{lh}" '
+                f'fillcolor="#FFFFFF" strokecolor="#CBD5E0" strokeweight="0.5pt">'
+                f'<v:textbox inset="1pt,1pt,1pt,1pt"><w:txbxContent>'
+                f'<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0"/></w:pPr>'
+                f'<w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="ＭＳ ゴシック"/>'
+                f'<w:color w:val="2C5282"/><w:sz w:val="15"/></w:rPr>'
+                f'<w:t>{escape(lbl)}</w:t></w:r></w:p>'
+                f'</w:txbxContent></v:textbox></v:rect>'
+            )
+
+    # 2. ノード（編集可能なテキストボックス付きシェイプ）を描画
+    for b_i, b in enumerate(boxes, start=1):
+        bx = int(round(b["x"] / 1000.0 * coord_w))
+        by = int(round(b["y"] / 1000.0 * coord_h))
+        bw = max(360, int(round(b["w"] / 1000.0 * coord_w)))
+        bh = max(220, int(round(b["h"] / 1000.0 * coord_h)))
+        shp = b.get("shape", "rect")
+
+        if shp == "participant":
+            fill_hex, stroke_hex, txt_hex = "#1B365D", "#1B365D", "FFFFFF"
+            tag = "v:roundrect"
+            extra = ' arcsize="8000f"'
+        elif shp == "diamond":
+            fill_hex, stroke_hex, txt_hex = "#FFF4E5", "#D97706", "1B365D"
+            tag = "v:roundrect"
+            extra = ' arcsize="18000f"'
+        elif shp == "cylinder":
+            fill_hex, stroke_hex, txt_hex = "#E6F4EA", "#2E7D32", "1B365D"
+            tag = "v:roundrect"
+            extra = ' arcsize="12000f"'
+        elif shp == "oval":
+            fill_hex, stroke_hex, txt_hex = "#EBF3FA", "#2C5282", "1B365D"
+            tag = "v:oval"
+            extra = ""
+        else:
+            fill_hex, stroke_hex, txt_hex = "#EBF3FA", "#2C5282", "1B365D"
+            tag = "v:roundrect"
+            extra = ' arcsize="10000f"'
+
+        p_xml_list: List[str] = []
+        for ln_txt in str(b.get("label", "")).split("\n"):
+            p_xml_list.append(
+                f'<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0"/></w:pPr>'
+                f'<w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="ＭＳ ゴシック"/>'
+                f'<w:b/><w:color w:val="{txt_hex}"/><w:sz w:val="17"/></w:rPr>'
+                f'<w:t>{escape(ln_txt.strip())}</w:t></w:r></w:p>'
+            )
+
+        vml_parts.append(
+            f'<{tag} id="m_node_{diagram_idx}_{b_i}" '
+            f'style="position:absolute;left:{bx};top:{by};width:{bw};height:{bh}"{extra} '
+            f'fillcolor="{fill_hex}" strokecolor="{stroke_hex}" strokeweight="1.2pt">'
+            f'<v:textbox inset="2pt,2pt,2pt,2pt"><w:txbxContent>'
+            f'{"".join(p_xml_list)}'
+            f'</w:txbxContent></v:textbox></{tag}>'
+        )
+
+    vml_parts.append("</v:group></w:pict>")
+    p = doc.add_paragraph(style="Normal")
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(6)
+    p.paragraph_format.space_after = Pt(8)
+    r = p.add_run()
+    r._r.append(parse_xml("".join(vml_parts)))
+    return True
+
+
+
+# ---------------------------------------------------------------------------
 # Word (.docx / Normal.dotm) 入出力・差分パッチ
 # ---------------------------------------------------------------------------
 
@@ -482,6 +1023,7 @@ def export_md_to_docx(md_path: Path, out_path: Path,
     # Normal.dotm は見出し直後の本文に 'Normal Indent' (styleId='a0') を用いる設計
     body_style = "Normal Indent" if "Normal Indent" in doc.styles else "Normal"
     has_h1_num = _docx_style_has_numbering(doc, "Heading 1")
+    mermaid_idx = 0
 
     for blk in blocks:
         if blk.kind == "heading":
@@ -524,6 +1066,11 @@ def export_md_to_docx(md_path: Path, out_path: Path,
                     _append_rich_runs_docx(p, prefix + item_text, use_template_defaults=True)
 
         elif blk.kind == "code":
+            lang = blk.meta.get("lang", "").strip().lower()
+            if lang == "mermaid":
+                mermaid_idx += 1
+                if _add_mermaid_diagram_docx(doc, blk.text, diagram_idx=mermaid_idx):
+                    continue
             p = doc.add_paragraph(style="Normal")
             p.paragraph_format.left_indent = Pt(14)
             p.paragraph_format.right_indent = Pt(14)
@@ -775,6 +1322,142 @@ def _find_slide_layout(prs: Any, preferred_names: Tuple[str, ...], fallback_idx:
     return prs.slide_layouts[0]
 
 
+def _get_slide_placeholder(slide: Any, idx: int) -> Optional[Any]:
+    """
+    python-pptx の SlidePlaceholders は `idx in slide.placeholders` が常に False になる仕様のため、
+    placeholder_format.idx を明示走査して該当プレースホルダを取得する。
+    """
+    for ph in slide.placeholders:
+        if ph.placeholder_format.idx == idx:
+            return ph
+    if idx == 1:
+        for ph in slide.placeholders:
+            if ph != slide.shapes.title and ph.has_text_frame and ph.placeholder_format.type not in (13, 15, 16):
+                return ph
+    return None
+
+
+def _add_mermaid_diagram_pptx(slide: Any, mermaid_code: str,
+                              left_in: float = 0.85, top_in: float = 2.8,
+                              width_in: float = 11.6, height_in: float = 3.55) -> bool:
+    """
+    Mermaid図を PowerPoint スライド上に直接クリック・編集可能なネイティブシェイプと矢印コネクタとして描画する。
+    """
+    from pptx.dml.color import RGBColor
+    from pptx.enum.shapes import MSO_CONNECTOR, MSO_SHAPE
+    from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
+    from pptx.oxml import parse_xml
+    from pptx.oxml.ns import nsdecls
+    from pptx.util import Inches, Pt
+
+    parsed = parse_mermaid_diagram(mermaid_code)
+    layout = layout_mermaid_diagram(parsed)
+    boxes = layout.get("boxes", [])
+    connectors = layout.get("connectors", [])
+    if not boxes:
+        return False
+
+    # 1. エッジ（矢印付きコネクタ・破線）とラベルを描画
+    for conn in connectors:
+        x1 = Inches(left_in + (conn["x1"] / 1000.0) * width_in)
+        y1 = Inches(top_in + (conn["y1"] / 1000.0) * height_in)
+        x2 = Inches(left_in + (conn["x2"] / 1000.0) * width_in)
+        y2 = Inches(top_in + (conn["y2"] / 1000.0) * height_in)
+        c_shp = slide.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, x1, y1, x2, y2)
+        c_shp.line.width = Pt(1.5)
+        is_lifeline = bool(conn.get("dashed") and not conn.get("directed", True))
+        c_shp.line.color.rgb = RGBColor(*(COLOR_MUTED if is_lifeline else COLOR_SECONDARY))
+
+        ln_el = c_shp.line._get_or_add_ln()
+        if conn.get("dashed"):
+            for old_d in ln_el.findall("{http://schemas.openxmlformats.org/drawingml/2006/main}prstDash"):
+                ln_el.remove(old_d)
+            ln_el.append(parse_xml(f'<a:prstDash {nsdecls("a")} val="dash"/>'))
+        if conn.get("directed", True):
+            for old_t in ln_el.findall("{http://schemas.openxmlformats.org/drawingml/2006/main}tailEnd"):
+                ln_el.remove(old_t)
+            ln_el.append(parse_xml(f'<a:tailEnd {nsdecls("a")} type="triangle" w="med" len="med"/>'))
+
+        lbl = conn.get("label", "").strip()
+        if lbl:
+            mx_in = left_in + ((conn["x1"] + conn["x2"]) / 2000.0) * width_in
+            my_in = top_in + ((conn["y1"] + conn["y2"]) / 2000.0) * height_in
+            lw_in = min(2.6, max(0.95, len(lbl) * 0.14 + 0.3))
+            lh_in = 0.28
+            tb = slide.shapes.add_textbox(
+                Inches(mx_in - lw_in / 2),
+                Inches(my_in - lh_in - 0.03 if abs(conn["y1"] - conn["y2"]) < 25 else my_in - lh_in / 2),
+                Inches(lw_in),
+                Inches(lh_in),
+            )
+            tb.fill.solid()
+            tb.fill.fore_color.rgb = RGBColor(255, 255, 255)
+            tf = tb.text_frame
+            tf.word_wrap = True
+            tf.margin_left = Pt(2)
+            tf.margin_right = Pt(2)
+            tf.margin_top = Pt(1)
+            tf.margin_bottom = Pt(1)
+            p = tf.paragraphs[0]
+            p.alignment = PP_ALIGN.CENTER
+            r = p.add_run()
+            r.text = lbl
+            r.font.name = FONT_JA_PRESENTATION
+            r.font.size = Pt(9.5)
+            r.font.color.rgb = RGBColor(*COLOR_SECONDARY)
+
+    # 2. ノード（編集可能なPowerPoint図形）を描画
+    for b in boxes:
+        bx = Inches(left_in + (b["x"] / 1000.0) * width_in)
+        by = Inches(top_in + (b["y"] / 1000.0) * height_in)
+        bw = Inches(max(0.85, (b["w"] / 1000.0) * width_in))
+        bh = Inches(max(0.38, (b["h"] / 1000.0) * height_in))
+        shp_kind = b.get("shape", "rect")
+
+        if shp_kind == "diamond":
+            mso_type = MSO_SHAPE.DIAMOND
+            fill_rgb, border_rgb, txt_rgb = (255, 244, 229), (217, 119, 6), COLOR_PRIMARY
+        elif shp_kind == "cylinder":
+            mso_type = MSO_SHAPE.ROUNDED_RECTANGLE
+            fill_rgb, border_rgb, txt_rgb = (230, 244, 234), (46, 125, 50), COLOR_PRIMARY
+        elif shp_kind == "oval":
+            mso_type = MSO_SHAPE.OVAL
+            fill_rgb, border_rgb, txt_rgb = (235, 243, 250), COLOR_SECONDARY, COLOR_PRIMARY
+        elif shp_kind == "participant":
+            mso_type = MSO_SHAPE.ROUNDED_RECTANGLE
+            fill_rgb, border_rgb, txt_rgb = COLOR_PRIMARY, COLOR_PRIMARY, (255, 255, 255)
+        else:
+            mso_type = MSO_SHAPE.ROUNDED_RECTANGLE
+            fill_rgb, border_rgb, txt_rgb = (235, 243, 250), COLOR_SECONDARY, COLOR_PRIMARY
+
+        node_shp = slide.shapes.add_shape(mso_type, bx, by, bw, bh)
+        node_shp.fill.solid()
+        node_shp.fill.fore_color.rgb = RGBColor(*fill_rgb)
+        node_shp.line.color.rgb = RGBColor(*border_rgb)
+        node_shp.line.width = Pt(1.5)
+
+        tf = node_shp.text_frame
+        tf.clear()
+        tf.word_wrap = True
+        tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+        tf.margin_left = Pt(4)
+        tf.margin_right = Pt(4)
+        tf.margin_top = Pt(2)
+        tf.margin_bottom = Pt(2)
+
+        for l_i, ln_txt in enumerate(str(b.get("label", "")).split("\n")):
+            p = tf.paragraphs[0] if l_i == 0 else tf.add_paragraph()
+            p.alignment = PP_ALIGN.CENTER
+            r = p.add_run()
+            r.text = ln_txt.strip()
+            r.font.name = FONT_JA_PRESENTATION
+            r.font.size = Pt(10.5)
+            r.font.bold = True
+            r.font.color.rgb = RGBColor(*txt_rgb)
+
+    return True
+
+
 def _group_blocks_into_slides(meta: Dict[str, str], blocks: List[MdBlock],
                               fallback_title: str) -> Tuple[str, str, List[Dict[str, Any]]]:
     """Markdownブロック列を表紙情報と各スライドデータに構造化する。"""
@@ -783,25 +1466,32 @@ def _group_blocks_into_slides(meta: Dict[str, str], blocks: List[MdBlock],
     slides: List[Dict[str, Any]] = []
     current_slide: Optional[Dict[str, Any]] = None
 
+    def _has_slide_content(s: Optional[Dict[str, Any]]) -> bool:
+        if not s:
+            return False
+        return bool(s["bullets"] or s["tables"] or s["code"] or s["mermaid"])
+
     for blk in blocks:
-        if blk.kind == "heading" and blk.level == 1 and not deck_title:
-            deck_title = clean_inline_md(blk.text)
+        if blk.kind == "heading" and blk.level == 1 and current_slide is None and not slides:
+            if not deck_title:
+                deck_title = clean_inline_md(blk.text)
             continue
 
         if blk.kind == "rule":
-            if current_slide and (current_slide["bullets"] or current_slide["tables"] or current_slide["code"]):
-                slides.append(current_slide)
+            if _has_slide_content(current_slide):
+                slides.append(current_slide)  # type: ignore[arg-type]
                 current_slide = None
             continue
 
         if blk.kind == "heading" and blk.level in (1, 2):
-            if current_slide and (current_slide["bullets"] or current_slide["tables"] or current_slide["code"]):
-                slides.append(current_slide)
+            if _has_slide_content(current_slide):
+                slides.append(current_slide)  # type: ignore[arg-type]
             current_slide = {
                 "title": clean_inline_md(blk.text),
                 "bullets": [],
                 "tables": [],
                 "code": [],
+                "mermaid": [],
                 "notes": [],
             }
             continue
@@ -815,6 +1505,7 @@ def _group_blocks_into_slides(meta: Dict[str, str], blocks: List[MdBlock],
                 "bullets": [],
                 "tables": [],
                 "code": [],
+                "mermaid": [],
                 "notes": [],
             }
 
@@ -828,12 +1519,15 @@ def _group_blocks_into_slides(meta: Dict[str, str], blocks: List[MdBlock],
         elif blk.kind == "table" and blk.rows:
             current_slide["tables"].append(blk.rows)
         elif blk.kind == "code":
-            current_slide["code"].append(blk.text)
+            if blk.meta.get("lang", "").strip().lower() == "mermaid":
+                current_slide["mermaid"].append(blk.text)
+            else:
+                current_slide["code"].append(blk.text)
         elif blk.kind == "note":
             current_slide["notes"].append(clean_inline_md(blk.text))
 
-    if current_slide and (current_slide["title"] or current_slide["bullets"] or current_slide["tables"]):
-        slides.append(current_slide)
+    if _has_slide_content(current_slide):
+        slides.append(current_slide)  # type: ignore[arg-type]
 
     if not deck_title:
         deck_title = fallback_title
@@ -869,13 +1563,16 @@ def export_md_to_pptx(md_path: Path, out_path: Path,
     cover = prs.slides.add_slide(title_layout)
     if cover.shapes.title:
         cover.shapes.title.text = deck_title
-    if 1 in cover.placeholders:
-        cover.placeholders[1].text = deck_subtitle or ""
+    sub_ph = _get_slide_placeholder(cover, 1)
+    if sub_ph is not None:
+        sub_ph.text = deck_subtitle or ""
 
     # 2. コンテンツスライド（Blank.potx の「タイトルとコンテンツ」または「タイトルのみ」を使用）
     for sdata in slides_data:
         has_bullets = bool(sdata["bullets"])
         has_table = bool(sdata["tables"])
+        has_mermaid = bool(sdata.get("mermaid"))
+        has_code = bool(sdata.get("code"))
         layout = content_layout if has_bullets else title_only_layout
         slide = prs.slides.add_slide(layout)
 
@@ -883,12 +1580,14 @@ def export_md_to_pptx(md_path: Path, out_path: Path,
             slide.shapes.title.text = sdata["title"]
 
         # 箇条書きの流し込み（Blank.potx のコンテンツプレースホルダ idx=1 を使用）
-        if has_bullets and 1 in slide.placeholders:
-            body_ph = slide.placeholders[1]
-            if has_table:
-                # 下部に表を配置するためテキスト枠の高さを調整
-                body_ph.top = Inches(1.0)
-                body_ph.height = Inches(2.2)
+        if has_bullets:
+            body_ph = _get_slide_placeholder(slide, 1)
+            if body_ph is None:
+                body_ph = slide.shapes.add_textbox(Inches(0.8), Inches(1.0), Inches(11.7), Inches(5.2))
+            if has_table or has_mermaid or has_code:
+                # 下部に表や図を配置するためテキスト枠の高さを調整
+                body_ph.top = Inches(0.95)
+                body_ph.height = Inches(1.85 if (has_table or has_mermaid) else 2.2)
             tf = body_ph.text_frame
             tf.clear()
             tf.word_wrap = True
@@ -896,15 +1595,34 @@ def export_md_to_pptx(md_path: Path, out_path: Path,
                 p = tf.paragraphs[0] if b_i == 0 else tf.add_paragraph()
                 p.text = b_text
                 p.level = min(max(indent_lvl, 0), 4)
+                for r in p.runs:
+                    r.font.name = FONT_JA_PRESENTATION
+                    r.font.size = Pt(16 if indent_lvl == 0 else 14)
+                    r.font.color.rgb = RGBColor(0, 0, 0)
+
+        # Mermaid図のネイティブ編集可能シェイプ配置
+        if has_mermaid:
+            diag_top = 2.85 if has_bullets else 1.15
+            diag_h = 3.55 if has_bullets else 5.25
+            if has_table:
+                diag_h = 2.0
+            _add_mermaid_diagram_pptx(
+                slide, sdata["mermaid"][0],
+                left_in=0.85, top_in=diag_top, width_in=11.6, height_in=diag_h
+            )
 
         # 表の配置（Blank.potx のフッタ線 y=6.55inch の内側に収める）
         if has_table:
             t_rows = sdata["tables"][0][:MAX_SLIDE_TABLE_ROWS]
             r_cnt = len(t_rows)
             c_cnt = max(len(r) for r in t_rows)
-            tbl_top = Inches(3.35) if has_bullets else Inches(1.15)
-            max_tbl_h = 5.4 if not has_bullets else 3.2
-            tbl_h = min(max_tbl_h, 0.40 * r_cnt)
+            if has_mermaid:
+                tbl_top = Inches(4.95)
+                max_tbl_h = 1.5
+            else:
+                tbl_top = Inches(3.0) if has_bullets else Inches(1.15)
+                max_tbl_h = 5.4 if not has_bullets else 3.45
+            tbl_h = min(max_tbl_h, 0.38 * r_cnt)
 
             graphic_frame = slide.shapes.add_table(
                 r_cnt, c_cnt, Inches(0.8), tbl_top, Inches(11.7), Inches(tbl_h)
@@ -925,6 +1643,21 @@ def export_md_to_pptx(md_path: Path, out_path: Path,
                         cp.font.size = Pt(12 if r_i == 0 else 11)
                         cp.font.bold = (r_i == 0)
                         cp.font.color.rgb = RGBColor(0, 0, 0)
+
+        elif has_code and not has_mermaid:
+            code_top = Inches(3.2) if has_bullets else Inches(1.2)
+            code_h = Inches(3.1) if has_bullets else Inches(5.1)
+            cb = slide.shapes.add_textbox(Inches(0.8), code_top, Inches(11.7), code_h)
+            cb.fill.solid()
+            cb.fill.fore_color.rgb = RGBColor(*COLOR_BG_LIGHT)
+            ctf = cb.text_frame
+            ctf.word_wrap = True
+            cp = ctf.paragraphs[0]
+            cp.text = sdata["code"][0][:800]
+            for r in cp.runs:
+                r.font.name = FONT_MONO
+                r.font.size = Pt(10.5)
+                r.font.color.rgb = RGBColor(0, 0, 0)
 
         if sdata["notes"]:
             notes_slide = slide.notes_slide
@@ -1038,8 +1771,9 @@ def patch_pptx_with_md(base_pptx: Path, md_path: Path, out_pptx: Path) -> Dict[s
         if cover.shapes.title and cover.shapes.title.text.strip() != deck_title:
             _replace_pptx_paragraph_preserve_font(cover.shapes.title.text_frame.paragraphs[0], deck_title)
             stats["updated_shapes"] += 1
-        if deck_sub and 1 in cover.placeholders:
-            sub_tf = cover.placeholders[1].text_frame
+        sub_ph = _get_slide_placeholder(cover, 1)
+        if deck_sub and sub_ph is not None:
+            sub_tf = sub_ph.text_frame
             if sub_tf.paragraphs and sub_tf.paragraphs[0].text.strip() != deck_sub:
                 _replace_pptx_paragraph_preserve_font(sub_tf.paragraphs[0], deck_sub)
                 stats["updated_shapes"] += 1
@@ -1100,8 +1834,9 @@ def patch_pptx_with_md(base_pptx: Path, md_path: Path, out_pptx: Path) -> Dict[s
             new_s = prs.slides.add_slide(content_layout)
             if new_s.shapes.title:
                 new_s.shapes.title.text = stitle
-            if 1 in new_s.placeholders and sdata["bullets"]:
-                tf = new_s.placeholders[1].text_frame
+            body_ph = _get_slide_placeholder(new_s, 1)
+            if body_ph is not None and sdata["bullets"]:
+                tf = body_ph.text_frame
                 tf.clear()
                 for b_i, (lvl, b_txt) in enumerate(sdata["bullets"]):
                     p = tf.paragraphs[0] if b_i == 0 else tf.add_paragraph()
@@ -1434,6 +2169,80 @@ def _register_japanese_pdf_font() -> Tuple[str, str]:
     return font_reg, font_bold
 
 
+def _create_mermaid_pdf_drawing(mermaid_code: str, width_pt: float,
+                                font_reg: str, font_bold: str) -> Optional[Any]:
+    """Mermaid図を ReportLab のベクター図形 (Drawing) に変換する。"""
+    import math
+    from reportlab.graphics.shapes import Drawing, Line, Polygon, Rect, String
+    from reportlab.lib import colors
+
+    parsed = parse_mermaid_diagram(mermaid_code)
+    layout = layout_mermaid_diagram(parsed)
+    boxes = layout.get("boxes", [])
+    connectors = layout.get("connectors", [])
+    if not boxes:
+        return None
+
+    height_pt = max(130.0, min(340.0, width_pt * float(layout.get("aspect", 0.48))))
+    d = Drawing(width_pt, height_pt)
+    d.add(Rect(0, 0, width_pt, height_pt,
+               fillColor=colors.HexColor("#FAFCFF"),
+               strokeColor=colors.HexColor("#CBD5E0"), strokeWidth=0.6))
+
+    # ReportLab の Drawing は左下が原点 (y=0) のため y 座標を反転する
+    for conn in connectors:
+        x1 = (conn["x1"] / 1000.0) * width_pt
+        y1 = height_pt - (conn["y1"] / 1000.0) * height_pt
+        x2 = (conn["x2"] / 1000.0) * width_pt
+        y2 = height_pt - (conn["y2"] / 1000.0) * height_pt
+        dash = [3, 2] if conn.get("dashed") else None
+        col = colors.HexColor("#6C757D" if (conn.get("dashed") and not conn.get("directed", True)) else "#2C5282")
+        d.add(Line(x1, y1, x2, y2, strokeColor=col, strokeWidth=1.1, strokeDashArray=dash))
+
+        if conn.get("directed", True):
+            ang = math.atan2(y2 - y1, x2 - x1)
+            arr_len = 6.0
+            ax1 = x2 - arr_len * math.cos(ang - 0.45)
+            ay1 = y2 - arr_len * math.sin(ang - 0.45)
+            ax2 = x2 - arr_len * math.cos(ang + 0.45)
+            ay2 = y2 - arr_len * math.sin(ang + 0.45)
+            d.add(Polygon([x2, y2, ax1, ay1, ax2, ay2], fillColor=col, strokeColor=col))
+
+        lbl = conn.get("label", "").strip()
+        if lbl:
+            mx = (x1 + x2) / 2.0
+            my = (y1 + y2) / 2.0 + (5.0 if abs(y1 - y2) < 10 else 0.0)
+            d.add(String(mx, my, lbl[:24], fontName=font_reg, fontSize=7.5,
+                         fillColor=colors.HexColor("#2C5282"), textAnchor="middle"))
+
+    for b in boxes:
+        bx = (b["x"] / 1000.0) * width_pt
+        bw = max(42.0, (b["w"] / 1000.0) * width_pt)
+        bh = max(20.0, (b["h"] / 1000.0) * height_pt)
+        by = height_pt - ((b["y"] / 1000.0) * height_pt) - bh
+        shp = b.get("shape", "rect")
+        if shp == "participant":
+            f_col, s_col, t_col = colors.HexColor("#1B365D"), colors.HexColor("#1B365D"), colors.white
+        elif shp == "diamond":
+            f_col, s_col, t_col = colors.HexColor("#FFF4E5"), colors.HexColor("#D97706"), colors.HexColor("#1B365D")
+        elif shp == "cylinder":
+            f_col, s_col, t_col = colors.HexColor("#E6F4EA"), colors.HexColor("#2E7D32"), colors.HexColor("#1B365D")
+        else:
+            f_col, s_col, t_col = colors.HexColor("#EBF3FA"), colors.HexColor("#2C5282"), colors.HexColor("#1B365D")
+
+        d.add(Rect(bx, by, bw, bh, rx=4, ry=4, fillColor=f_col, strokeColor=s_col, strokeWidth=1.1))
+        lines_lbl = [ln.strip() for ln in str(b.get("label", "")).split("\n") if ln.strip()]
+        if not lines_lbl:
+            lines_lbl = [b["id"]]
+        line_h = 9.5
+        start_ty = by + bh / 2.0 + ((len(lines_lbl) - 1) * line_h) / 2.0 - 3.0
+        for l_i, l_txt in enumerate(lines_lbl[:3]):
+            d.add(String(bx + bw / 2.0, start_ty - l_i * line_h, l_txt[:26],
+                         fontName=font_bold, fontSize=8.0, fillColor=t_col, textAnchor="middle"))
+
+    return d
+
+
 def export_md_to_pdf(md_path: Path, out_path: Path,
                      title_override: Optional[str] = None) -> None:
     from xml.sax.saxutils import escape
@@ -1531,6 +2340,13 @@ def export_md_to_pdf(md_path: Path, out_path: Path,
                 story.append(Paragraph(f"{pad}{bullet_mark}{escape(clean_inline_md(itm))}", st_bullet))
 
         elif blk.kind == "code":
+            lang = blk.meta.get("lang", "").strip().lower()
+            if lang == "mermaid":
+                d_flow = _create_mermaid_pdf_drawing(blk.text, usable_width, font_reg, font_bold)
+                if d_flow is not None:
+                    story.append(d_flow)
+                    story.append(Spacer(1, 8))
+                    continue
             story.append(Preformatted(blk.text, st_code))
             story.append(Spacer(1, 4))
 
@@ -1621,139 +2437,8 @@ def import_pdf_to_md(pdf_path: Path) -> str:
 
 
 # ---------------------------------------------------------------------------
-# 省トークン自動化機能: gen-pres（SW105/SW205/SWP6 からプレゼン自動生成） & batch-export
+# 省トークン自動化機能: batch-export（開発文書の一括Office変換）
 # ---------------------------------------------------------------------------
-
-def _find_first_md(artifacts_dir: Path, prefix: str) -> Optional[Path]:
-    if not artifacts_dir.is_dir():
-        return None
-    matches = sorted(p for p in artifacts_dir.glob("*.md") if p.name.startswith(prefix))
-    return matches[0] if matches else None
-
-
-def _extract_section_bullets(blocks: List[MdBlock], keyword: str, max_items: int = 5) -> List[str]:
-    """指定キーワードを含む見出し配下の段落・箇条書きを抽出する。"""
-    capturing = False
-    capture_lvl = 0
-    results: List[str] = []
-    for b in blocks:
-        if b.kind == "heading":
-            if keyword in b.text:
-                capturing = True
-                capture_lvl = b.level
-                continue
-            elif capturing and b.level <= capture_lvl:
-                break
-        if capturing:
-            if b.kind == "paragraph":
-                results.append(clean_inline_md(b.text)[:120])
-            elif b.kind == "list":
-                for _, itm, _ in b.items:
-                    results.append(clean_inline_md(itm)[:120])
-            if len(results) >= max_items:
-                break
-    return results[:max_items]
-
-
-def generate_presentation_from_artifacts(artifacts_dir: Path,
-                                         md_out: Path,
-                                         pptx_out: Path,
-                                         template_path: Optional[Path] = None) -> Dict[str, Any]:
-    """
-    LLMを介さずに `docs/artifacts/` 配下の SW105 / SW205 / SWP6 から要点を自動抽出し、
-    プレゼン構成案 (PRES101.md) と PowerPoint (PRES101.pptx) を決定論的に生成する。
-    """
-    sw105 = _find_first_md(artifacts_dir, "SW105")
-    sw205 = _find_first_md(artifacts_dir, "SW205")
-    swp6 = _find_first_md(artifacts_dir, "SWP6")
-
-    proj_title = "開発成果プレゼンテーション"
-    purpose_bullets: List[str] = []
-    req_table: List[List[str]] = [["REQ-ID", "要求名", "概要"]]
-    arch_bullets: List[str] = []
-    unit_table: List[List[str]] = [["UNIT-ID", "ユニット名", "責務"]]
-    test_summary_rows: List[List[str]] = [["検証項目", "件数", "結果"]]
-
-    if sw105 and sw105.is_file():
-        meta105, blk105 = parse_markdown(sw105.read_text(encoding="utf-8-sig"))
-        if meta105.get("title"):
-            proj_title = f"{meta105['title']} — 開発成果報告"
-        purpose_bullets = _extract_section_bullets(blk105, "目的", 4) + _extract_section_bullets(blk105, "適用範囲", 3)
-        for b in blk105:
-            if b.kind == "table" and b.rows and any("REQ" in c for c in b.rows[0]):
-                for r in b.rows[1:8]:
-                    req_table.append([clean_inline_md(c)[:45] for c in r[:3]])
-                break
-
-    if sw205 and sw205.is_file():
-        _, blk205 = parse_markdown(sw205.read_text(encoding="utf-8-sig"))
-        arch_bullets = _extract_section_bullets(blk205, "全体構成", 4) + _extract_section_bullets(blk205, "機能ユニット", 3)
-        for b in blk205:
-            if b.kind == "table" and b.rows and any("UNIT" in c for c in b.rows[0]):
-                for r in b.rows[1:8]:
-                    unit_table.append([clean_inline_md(c)[:45] for c in r[:3]])
-                break
-
-    if swp6 and swp6.is_file():
-        txt_p6 = swp6.read_text(encoding="utf-8-sig")
-        tc_ids = sorted(set(re.findall(r"\bTC-\d{3,4}\b", txt_p6)))
-        pass_cnt = len(re.findall(r"\|\s*Pass\s*\|", txt_p6, re.IGNORECASE))
-        fail_cnt = len(re.findall(r"\|\s*Fail\s*\|", txt_p6, re.IGNORECASE))
-        test_summary_rows.append(["総合テスト項目 (TC)", f"{len(tc_ids)}件", f"Pass {pass_cnt} / Fail {fail_cnt}"])
-
-    if not purpose_bullets:
-        purpose_bullets = ["SW105（要求仕様書）に基づくシステム開発の背景と目的", "ターゲット業務の効率化と品質保証の達成"]
-    if not arch_bullets:
-        arch_bullets = ["SW205（アーキテクチャ設計書）に基づくモジュール分割", "高い保守性と自動テスト容易性（Agentic Testability）の確保"]
-
-    md_lines = [
-        "---",
-        f"title: {proj_title}",
-        "subtitle: DADAプロセス 開発成果・アーキテクチャ・品質検証報告",
-        "---",
-        "",
-        f"# {proj_title}",
-        "",
-        "## 1. 背景と目的",
-    ]
-    for item in purpose_bullets[:6]:
-        md_lines.append(f"- {item}")
-    md_lines.extend(["", "## 2. 主要な機能要求 (SW105)"])
-    md_lines.append("- 定義された主要機能要求の一覧")
-    md_lines.append("")
-    if len(req_table) > 1:
-        md_lines.append("| " + " | ".join(req_table[0]) + " |")
-        md_lines.append("| --- | --- | --- |")
-        for r in req_table[1:]:
-            padded = (r + ["", "", ""])[:3]
-            md_lines.append("| " + " | ".join(padded) + " |")
-    md_lines.extend(["", "## 3. アーキテクチャ設計とモジュール構成 (SW205)"])
-    for item in arch_bullets[:5]:
-        md_lines.append(f"- {item}")
-    md_lines.append("")
-    if len(unit_table) > 1:
-        md_lines.append("| " + " | ".join(unit_table[0]) + " |")
-        md_lines.append("| --- | --- | --- |")
-        for r in unit_table[1:]:
-            padded = (r + ["", "", ""])[:3]
-            md_lines.append("| " + " | ".join(padded) + " |")
-    md_lines.extend([
-        "",
-        "## 4. 品質検証と総合テスト結果 (SWP6)",
-        "- 要求定義（REQ）から総合テスト（TC）・実装ユニット（UNIT）までのトレーサビリティを検証",
-        "",
-        "| " + " | ".join(test_summary_rows[0]) + " |",
-        "| --- | --- | --- |",
-    ])
-    for r in test_summary_rows[1:]:
-        md_lines.append("| " + " | ".join(r) + " |")
-    md_lines.append("")
-
-    md_out.parent.mkdir(parents=True, exist_ok=True)
-    md_out.write_text("\n".join(md_lines), encoding="utf-8")
-    export_md_to_pptx(md_out, pptx_out, template_path=template_path)
-    return {"md_out": md_out.as_posix(), "pptx_out": pptx_out.as_posix(), "slides": 5}
-
 
 def batch_export_artifacts(artifacts_dir: Path, out_dir: Path,
                            formats: List[str]) -> List[str]:
@@ -1761,7 +2446,6 @@ def batch_export_artifacts(artifacts_dir: Path, out_dir: Path,
     `docs/artifacts/` 内のMarkdown成果物を、LLMを介さずに一括で適切なOffice形式へ変換する。
     - SW105 / SW205 / SWP6 -> Word (.docx) および PDF (.pdf)
     - SWP6 / BUG101 / TM101 -> Excel (.xlsx)
-    - PRES101 -> PowerPoint (.pptx)
     """
     generated: List[str] = []
     if not artifacts_dir.is_dir():
@@ -1783,11 +2467,6 @@ def batch_export_artifacts(artifacts_dir: Path, out_dir: Path,
         if "xlsx" in formats and name.startswith(("SWP6", "BUG101", "TM101")):
             dst = out_dir / f"{name}.xlsx"
             export_md_to_xlsx(md_file, dst)
-            generated.append(dst.as_posix())
-
-        if "pptx" in formats and name.startswith("PRES"):
-            dst = out_dir / f"{name}.pptx"
-            export_md_to_pptx(md_file, dst)
             generated.append(dst.as_posix())
 
         if "pdf" in formats and name.startswith(("SW105", "SW205", "SWP6")):
@@ -1819,6 +2498,7 @@ def inspect_office_file(path: Path, summary_only: bool = False) -> Tuple[int, st
             for p in doc.paragraphs
             if p.text.strip() and p.style and (p.style.name == "Title" or p.style.name.lower().startswith("heading"))
         ]
+        diagrams_cnt = len(doc.element.body.findall(".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pict"))
         empty_headers = 0
         for idx, t in enumerate(doc.tables, start=1):
             if t.rows:
@@ -1826,7 +2506,7 @@ def inspect_office_file(path: Path, summary_only: bool = False) -> Tuple[int, st
                 if any(c == "" for c in hdr_cells):
                     empty_headers += 1
                     warnings.append(f"表{idx}のヘッダ行に空セルがあります")
-        info.append(f"- 形式: Word ({ext}) | 段落: {len(doc.paragraphs)} | 見出し: {len(headings)} | 表: {len(doc.tables)}")
+        info.append(f"- 形式: Word ({ext}) | 段落: {len(doc.paragraphs)} | 見出し: {len(headings)} | 表: {len(doc.tables)} | 図: {diagrams_cnt}")
         if headings:
             info.append("## 見出し一覧")
             info.extend(headings[:25])
@@ -1836,7 +2516,7 @@ def inspect_office_file(path: Path, summary_only: bool = False) -> Tuple[int, st
                 hdr = [c.text.strip().replace("\n", " ") for c in t.rows[0].cells] if t.rows else []
                 info.append(f"- 表{idx}: {len(t.rows)}行 × {len(hdr)}列 (ヘッダ: {', '.join(hdr[:6])})")
         status = "WARN" if warnings else "OK"
-        summary_line = f"OFFICE-INSPECT: {status} | format=docx | headings={len(headings)} | tables={len(doc.tables)} | warnings={len(warnings)}"
+        summary_line = f"OFFICE-INSPECT: {status} | format=docx | headings={len(headings)} | tables={len(doc.tables)} | diagrams={diagrams_cnt} | warnings={len(warnings)}"
 
     elif ext == ".xlsx":
         import openpyxl
@@ -1864,6 +2544,7 @@ def inspect_office_file(path: Path, summary_only: bool = False) -> Tuple[int, st
             bullet_cnt = 0
             char_cnt = 0
             tbl_cnt = 0
+            diag_shp_cnt = 0
             for sh in s.shapes:
                 if sh.has_table:
                     tbl_cnt += 1
@@ -1872,13 +2553,19 @@ def inspect_office_file(path: Path, summary_only: bool = False) -> Tuple[int, st
                 elif sh.has_text_frame and sh != s.shapes.title:
                     if sh.is_placeholder and sh.placeholder_format.type in (13, 15, 16):
                         continue
+                    if not sh.is_placeholder and getattr(sh, "shape_type", None) == 1:
+                        # AUTO_SHAPE (1) はMermaid図形ノードとしてカウント
+                        diag_shp_cnt += 1
+                        continue
                     for p in sh.text_frame.paragraphs:
                         if p.text.strip():
                             bullet_cnt += 1
                             char_cnt += len(p.text.strip())
+            if idx > 1 and bullet_cnt == 0 and tbl_cnt == 0 and diag_shp_cnt == 0:
+                warnings.append(f"スライド{idx} ({stitle}): スライドに本文・表・図が含まれていません")
             if bullet_cnt > MAX_SLIDE_BULLETS or char_cnt > MAX_SLIDE_CHARS:
                 warnings.append(f"スライド{idx} ({stitle}): 文字量({bullet_cnt}項目/{char_cnt}文字)が多く枠溢れの恐れがあります")
-            info.append(f"  - スライド {idx}: {stitle} (箇条書き: {bullet_cnt}, 文字数: {char_cnt}, 表: {tbl_cnt})")
+            info.append(f"  - スライド {idx}: {stitle} (箇条書き: {bullet_cnt}, 文字数: {char_cnt}, 表: {tbl_cnt}, 図形ノード: {diag_shp_cnt})")
         status = "WARN" if warnings else "OK"
         summary_line = f"OFFICE-INSPECT: {status} | format=pptx | slides={len(prs.slides)} | warnings={len(warnings)}"
 
@@ -1980,16 +2667,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_bat = sub.add_parser("batch-export", help="docs/artifacts 内のMarkdown成果物を一括でOffice文書に変換する（LLM不要）")
     p_bat.add_argument("--artifacts-dir", default="docs/artifacts", help="入力Markdownディレクトリ")
     p_bat.add_argument("--out-dir", default="docs/artifacts/office", help="Office文書出力先ディレクトリ")
-    p_bat.add_argument("--formats", default="docx,xlsx,pptx,pdf", help="出力形式のカンマ区切り (docx,xlsx,pptx,pdf)")
+    p_bat.add_argument("--formats", default="docx,xlsx,pdf", help="出力形式のカンマ区切り (docx,xlsx,pdf)")
     p_bat.add_argument("--summary", action="store_true", help="1行サマリのみ出力する（省トークン用）")
-
-    # gen-pres
-    p_pres = sub.add_parser("gen-pres", help="SW105/SW205/SWP6 からプレゼン構成案(.md)とPowerPoint(.pptx)を自動生成する（LLM不要）")
-    p_pres.add_argument("--artifacts-dir", default="docs/artifacts", help="入力成果物ディレクトリ")
-    p_pres.add_argument("--md-out", default="docs/artifacts/PRES101_開発成果プレゼンテーション.md", help="生成するMarkdown構成案パス")
-    p_pres.add_argument("--pptx-out", default="docs/artifacts/PRES101_開発成果プレゼンテーション.pptx", help="生成するPowerPointファイルパス")
-    p_pres.add_argument("--template", default=None, help="適用するPowerPointテンプレート（省略時は Blank.potx）")
-    p_pres.add_argument("--summary", action="store_true", help="1行サマリのみ出力する（省トークン用）")
 
     # inspect
     p_ins = sub.add_parser("inspect", help="Office文書またはPDFの構造とレイアウト溢れを検査する")
@@ -2083,14 +2762,6 @@ def main(argv: Optional[List[str]] = None) -> int:
             fmts = [f.strip().lower() for f in args.formats.split(",") if f.strip()]
             generated = batch_export_artifacts(Path(args.artifacts_dir), Path(args.out_dir), fmts)
             print(f"OFFICE-BATCH: OK | count={len(generated)} | files={', '.join(generated) if generated else 'none'}")
-            return 0
-
-        elif args.subcommand == "gen-pres":
-            tpl_path = Path(args.template) if args.template else None
-            res = generate_presentation_from_artifacts(
-                Path(args.artifacts_dir), Path(args.md_out), Path(args.pptx_out), tpl_path
-            )
-            print(f"OFFICE-GEN-PRES: OK | md={res['md_out']} | pptx={res['pptx_out']}")
             return 0
 
         elif args.subcommand == "inspect":

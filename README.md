@@ -20,7 +20,7 @@
 | [📁 リポジトリ構成](#リポジトリ構成) | フォルダの意味、開発で増えるファイル |
 | [💡 使いこなすコツ](#aiエージェントを使いこなすコツ) | 起動のコツ、作業ブランチ、帳票、点検ツール、他環境への移植 |
 | [🔄 他のツールで使う](#他のツールで使う) | Codex / Claude Code / Cursor / GitHub Copilot へのカスタマイズ（参考。環境により異なる） |
-| [🖥️ 左欄にサブエージェントが出ないとき](#antigravity-20-の左欄とサブエージェント) | P開発自律型 / A開発自律型で工程が切り替わっても左欄が増えない理由 |
+| [🖥️ 左欄にサブエージェントが出ないとき](#antigravity-app-の左欄とサブエージェント) | P開発自律型 / A開発自律型で工程が切り替わっても左欄が増えない理由 |
 | [📄 ライセンス・著作権表示](#ライセンス) | MIT License、および『yomiyasu』等の第三者著作物・参考文献の著作権表示 |
 
 ---
@@ -28,7 +28,7 @@
 <a id="はじめに"></a>
 ## 👋 はじめに
 
-本リポジトリは、**Google Antigravity 2.0**（エージェント開発/実行ツール）および **Antigravity CLI** を主対象とした開発プロセステンプレートです。AIエージェントと人間が協調し、高品質なソフトウェアを高速に構築するための **DADA（Document-and-Agent-Driven Agile）プロセス** を提供します。Antigravity IDE でも動きますが、開発をエージェント主体で進める上では、Antigravity 2.0 の方が生産性と品質を高く保てます。その上で、エージェントが作成したファイルの確認と短い修正は、好きなエディタ（Antigravity IDE や VS Code など）の併用を推奨します。
+本リポジトリは、**Google Antigravity App**（エージェント開発/実行ツール）および **Antigravity CLI** を主対象とした開発プロセステンプレートです。AIエージェントと人間が協調し、高品質なソフトウェアを高速に構築するための **DADA（Document-and-Agent-Driven Agile）プロセス** を提供します。Antigravity IDE でも動きますが、開発をエージェント主体で進める上では、Antigravity App の方が生産性と品質を高く保てます。その上で、エージェントが作成したファイルの確認と短い修正は、好きなエディタ（Antigravity IDE や VS Code など）の併用を推奨します。
 
 **「AIに実装は任せても、何を作るかと最終的な良し悪しは人間が握る」**。このテンプレートを使うだけで、要求定義から実装まで全工程がドキュメント駆動で動き出します。区切りごとに確認する（承認ゲート型）か、完成まで任せるか（自律型）は、使い方で選べます。
 
@@ -48,6 +48,8 @@ DADAプロセスは、**人間とAIによる協同開発プロセス**です。�
 
 どちらの型で開発しても、できあがったものを踏まえて、人間がさらに開発Loopを回す場合があります。作るもの2種類と進め方2型の組み合わせは、AIへの指示文（プロンプト）で選択できます。[4つの使い方](#4つの使い方何を作るか--どう進めるか) でご説明します。
 
+DADAプロセスでは、開発文書（要求仕様書やアーキテクチャ設計書など）を中心に据えて開発を進めます。開発文書としての文書品質は、ASDoQ文書品質モデルに則り、作成とレビューを行います。AI特有の読みにくさを防ぐ工夫もされています。文書フォーマットは、マークダウン書式をベースとしますが、ユーザの指示に従い、WordやExcelのOffice書式でも出力します。
+
 > [!NOTE]
 > 作者はAntigravityとAgent Codingの学習中です。このプロセスは未完成で、期待通りに動作しない部分もあります。日々改善していきますので、ご容赦ください。
 
@@ -55,7 +57,7 @@ DADAプロセスは、**人間とAIによる協同開発プロセス**です。�
 ### ⚡ 最短の始め方
 
 1. [GitHubのテンプレート](https://github.com/yamaPiT/DADAProcess) から自分のリポジトリを作るか、ZIPを解凍する（詳細はすぐ下の [使い方](#使い方)）。
-2. **Antigravity 2.0** でそのフォルダを開きます。書類の確認は、好きなエディタを併用してかまいません。DADAは速いので、次のステップの前に [作業ブランチ](#作業ブランチ) を切ることを推奨します（Gitのコマンドを覚えなくても、チャットで頼めます）。
+2. **Antigravity App** でそのフォルダを開きます。書類の確認は、好きなエディタを併用してかまいません。DADAは速いので、次のステップの前に [作業ブランチ](#作業ブランチ) を切ることを推奨します（Gitのコマンドを覚えなくても、チャットで頼めます）。
 3. チャットに `DADAプロセスで開発を開始してください。` と、作りたいものの概要を書く。
 
 それ以上の指示を与えなければ、[4つの使い方](#4つの使い方何を作るか--どう進めるか) の **P開発承認ゲート型**で、プログラム開発が始まります。
@@ -133,14 +135,14 @@ GitHub / ZIP のどちらで始めても、**ここから先（Step 3 以降）�
 
 ### Step 3: プロジェクトを開く（環境の準備）
 
-このテンプレートの主戦場は **Antigravity 2.0** です。スキルはワークスペース内の `.agents/` を読むだけで動き、IDE 専用の機能には依存しません。開発の本体はエージェント側で進み、エディタはできたファイルの確認と短い修正に使います。
+このテンプレートの主戦場は **Antigravity App** です。スキルはワークスペース内の `.agents/` を読むだけで動き、IDE 専用の機能には依存しません。開発の本体はエージェント側で進み、エディタはできたファイルの確認と短い修正に使います。
 
 > [!TIP]
-> **なぜ Antigravity 2.0 を主にするか**
-> DADA が必要とするのは、ファイルの読み書き、シェル（`python tools/dada_check.py`）、そして可能ならサブエージェントです。フェーズをまたぐときに過去の会話を捨て、承認済みの書類だけを真実にする（アテンション・リセット）は、会話を物理的に分けられる 2.0 の方が強くなります。P開発自律型 / A開発自律型を使うなら、2.0 を選んでください。IDE は書類とコードを目で確認し、短い修正をする面として併用すれば十分です。
+> **なぜ Antigravity App を主にするか**
+> DADA が必要とするのは、ファイルの読み書き、シェル（`python tools/dada_check.py`）、そして可能ならサブエージェントです。フェーズをまたぐときに過去の会話を捨て、承認済みの書類だけを真実にする（アテンション・リセット）は、会話を物理的に分けられる Antigravity App の方が強くなります。P開発自律型 / A開発自律型を使うなら、Antigravity App を選んでください。IDE は書類とコードを目で確認し、短い修正をする面として併用すれば十分です。
 
-#### Antigravity 2.0 の場合（推奨）
-1. [Antigravity 2.0](https://antigravity.google/download) を起動し、左サイドバーのフォルダ（＋）アイコンから **「New Project」** を作成します。
+#### Antigravity App の場合（推奨）
+1. [Antigravity App](https://antigravity.google/download) を起動し、左サイドバーのフォルダ（＋）アイコンから **「New Project」** を作成します。
 2. **「Add Folder」** で、GitHub または ZIP で準備したプロジェクトフォルダを関連付けて **「Create」** をクリックします。
 3. エージェントの起動時、**Local Mode**（アクティブなフォルダで直接作業）を選択してください。人が書類を直接確認・編集する使い方では、Local Modeが基本です。
 4. **(推奨)** 機械チェック（`tools/dada_check.py`）を使うために **Python 3.8以降**が使える状態にしておきます。ターミナルで `python --version` を実行して確認してください（追加パッケージのインストールは不要です）。Pythonがない環境でもDADAプロセスは動作しますが、AIが機械チェックを手動走査で代替するため、検証の確実性は下がります。
@@ -154,33 +156,33 @@ Antigravity IDE でも同じテンプレートが動きます。この場合は 
 
 1. GitHub または ZIP で作成・準備したプロジェクトフォルダを、**Antigravity IDE** で開きます。
 2. Mermaid図をプレビューしたい場合は、拡張機能 `Markdown Preview Mermaid Support` を導入します。
-3. **(推奨)** `context7` MCPサーバーと **Python 3.8以降**、および `git --version` は、2.0 の場合と同じです。
+3. **(推奨)** `context7` MCPサーバーと **Python 3.8以降**、および `git --version` は、Antigravity App の場合と同じです。
 
 <a id="サブエージェントの作り方"></a>
 ### 💻 サブエージェントの作り方
 
-**エージェント開発/実行ツール**（Antigravity 2.0/IDE/CLI）の制約で、サブエージェントをだれが作るかが変わります。これを **動作モード** と呼びます。**チャットで指定する必要はありません。開いたエージェント開発/実行ツールが自動的に決めます。**
+**エージェント開発/実行ツール**（Antigravity App/IDE/CLI）の制約で、サブエージェントをだれが作るかが変わります。これを **動作モード** と呼びます。**チャットで指定する必要はありません。開いたエージェント開発/実行ツールが自動的に決めます。**
 
 - **ツールが自動的にサブエージェントを作る**
 - **人間がサブエージェントを作る**
 
 | | **ツールが自動的にサブエージェントを作る** | **人間がサブエージェントを作る** |
 | :--- | :--- | :--- |
-| 動く場所 | **Antigravity 2.0** または **Antigravity CLI** | **Antigravity IDE** だけ |
+| 動く場所 | **Antigravity App** または **Antigravity CLI** | **Antigravity IDE** だけ |
 | 工程の切れ目 | エージェント開発/実行ツールが工程ごとにサブエージェントを作る。**あなたは新しいチャットを開かなくてよい** | あなたが次の工程のサブエージェント（新しいチャット）を作る |
 | 承認ゲート型のとき | メインの会話は「次へ進めてよいか」の確認が中心。作業本体はツールが作ったサブエージェント | 工程が終わるたびに、**あなたが新しいチャット（サブエージェント）を開く** |
 | 自律型のとき | ツールが作ったサブエージェントで工程を順に進める（過去の雑談が次工程に残りにくい） | 人間の操作を待てないため、同じ会話の中で論理的に切り替える（洗浄は、ツールが自動作成する場合より弱い） |
-| 向いている場面 | 普段の開発。一気に完成まで任せたいとき | 2.0 が使えない。IDE を主にして開発したい |
+| 向いている場面 | 普段の開発。一気に完成まで任せたいとき | Antigravity App が使えない。IDE を主にして開発したい |
 
 動作モードは、後述の**実行モード**（承認ゲート型 / 自律型）や **実行プロファイル**（Guided / Autonomous）とは別です。実行モードや実行プロファイルをどれにしても、動作モードは独立です。
 
 | やりたいこと | 開くもの | 動作モード |
 | :--- | :--- | :--- |
-| **人間が承認しながらの開発（P開発承認ゲート型 / A開発承認ゲート型）**<br>または **一気に完成まで（P開発自律型 / A開発自律型）** | **Antigravity 2.0** でエージェントを動かす。書類とコードの確認・短い修正は、好きなエディタで行う | **ツールが自動的にサブエージェントを作る** |
-| **2.0 が使えない**（未導入、社内規定で IDE のみ） | Antigravity IDE だけで進める | **人間がサブエージェントを作る** |
+| **人間が承認しながらの開発（P開発承認ゲート型 / A開発承認ゲート型）**<br>または **一気に完成まで（P開発自律型 / A開発自律型）** | **Antigravity App** でエージェントを動かす。書類とコードの確認・短い修正は、好きなエディタで行う | **ツールが自動的にサブエージェントを作る** |
+| **Antigravity App が使えない**（未導入、社内規定で IDE のみ） | Antigravity IDE だけで進める | **人間がサブエージェントを作る** |
 | **IDE を主にして開発したい** | Antigravity IDE でチャットも開く | **人間がサブエージェントを作る** |
 
-P開発自律型 / A開発自律型で工程が切り替わっても、Antigravity 2.0 の左欄にサブエージェントが増えないことがあります。故障ではなく仕様です。説明は [左欄にサブエージェントが出ないとき](#antigravity-20-の左欄とサブエージェント) です。
+P開発自律型 / A開発自律型で工程が切り替わっても、Antigravity App の左欄にサブエージェントが増えないことがあります。故障ではなく仕様です。説明は [左欄にサブエージェントが出ないとき](#antigravity-app-の左欄とサブエージェント) です。
 
 <a id="作業ブランチ"></a>
 ### Step 4: 開発の前に作業ブランチを切る
@@ -192,7 +194,7 @@ DADAプロセスは、従来の人手中心の開発よりファイルが増え�
 - **マージする前に**、開発が失敗したと分かった → 作業ブランチを切る前の状態に戻る
 - **マージしたあとに**、開発が失敗したと分かった → マージ前の版に戻る
 
-Git のコマンドに慣れていなくても構いません。**Antigravity 2.0 のチャットで Git を動かしてください。** その前に、Antigravity から `git` が使える必要があります。確認方法は [Git を Antigravity から使えるようにする](#gitをantigravityから使えるようにする) です。
+Git のコマンドに慣れていなくても構いません。**Antigravity App のチャットで Git を動かしてください。** その前に、Antigravity から `git` が使える必要があります。確認方法は [Git を Antigravity から使えるようにする](#gitをantigravityから使えるようにする) です。
 
 チャットの例です。コマンドを自分で打つ必要はありません。
 
@@ -242,7 +244,7 @@ AIが `dada-process` スキルを読み込み、開始時に「何を作るか�
 <a id="antigravityの設定"></a>
 ## 🔧 Antigravityの設定
 
-ここは **Antigravity（2.0 / IDE / CLI）側**の設定です。Git・名前・context7 は一度済ませれば各プロジェクトで使えます。[自動実行ポリシー](#自動実行ポリシー) だけは、Antigravity 2.0 では **プロジェクトごと**に変えられます（全プロジェクト一括は General）。開発を急ぐ場合は飛ばして [4つの使い方](#4つの使い方何を作るか--どう進めるか) へ進んでください。作業ブランチをチャットで頼むなら、先に Git だけは済ませてください。**P開発自律型 / A開発自律型** で人間に何度も確認ダイアログが出る場合は、自動実行ポリシーです。
+ここは **Antigravity（App / IDE / CLI）側**の設定です。Git・名前・context7 は一度済ませれば各プロジェクトで使えます。[自動実行ポリシー](#自動実行ポリシー) だけは、Antigravity App では **プロジェクトごと**に変えられます（全プロジェクト一括は General）。開発を急ぐ場合は飛ばして [4つの使い方](#4つの使い方何を作るか--どう進めるか) へ進んでください。作業ブランチをチャットで頼むなら、先に Git だけは済ませてください。**P開発自律型 / A開発自律型** で人間に何度も確認ダイアログが出る場合は、自動実行ポリシーです。
 
 | 設定 | 何のためか |
 | :--- | :--- |
@@ -269,9 +271,9 @@ AIが `dada-process` スキルを読み込み、開始時に「何を作るか�
 <a id="自動実行ポリシー"></a>
 ### 自動実行ポリシー（P開発自律型 / A開発自律型で必要）
 
-Antigravity 2.0には、意図しないファイル破壊や悪意のあるシェルコマンド実行を防ぐため、**既定で2重の確認**が付いているので、その確認をOFFにします。Antigravity2.0の左下の歯車アイコンをクリックします。その後、左側のプロジェクト一覧から、該当のプロジェクトを選択し、以下のように設定します。
+Antigravity Appには、意図しないファイル破壊や悪意のあるシェルコマンド実行を防ぐため、**既定で2重の確認**が付いているので、その確認をOFFにします。Antigravity Appの左下の歯車アイコンをクリックします。その後、左側のプロジェクト一覧から、該当のプロジェクトを選択し、以下のように設定します。
 
-| 層 | Antigravity 2.0 での項目 | 何を止めるか | 自律型で目指す値 |
+| 層 | Antigravity App での項目 | 何を止めるか | 自律型で目指す値 |
 | :--- | :--- | :--- | :--- |
 | **コマンド実行** | Agent Settings → **Security Preset** | ターミナルコマンド（`python tools/dada_check.py`、`pytest`、`git` など）の許可ポップアップ | **Turbo Mode**（確認を求めないプリセット） |
 | **成果物・ファイル** | Agent Behavior → **Artifact Review Policy** | ファイル更新ごとの確認・コミット待ち | **Always Proceed** |
@@ -297,7 +299,7 @@ Antigravity 2.0には、意図しないファイル破壊や悪意のあるシ�
 
 #### Antigravity CLI の場合
 
-2.0 の画面名とは別です。プロンプトで `/config`（または `/settings`）を開き、次を確認を求めない値にします。
+Antigravity App の画面名とは別です。プロンプトで `/config`（または `/settings`）を開き、次を確認を求めない値にします。
 
 - **Tool Permission**（`toolPermission`）: 既定 `request-review` → 自律なら `always-proceed`
 - **Artifact Review**（`artifactReviewPolicy`）: 既定 `asks-for-review` → 自律なら `always-proceed`
@@ -306,7 +308,7 @@ Antigravity 2.0には、意図しないファイル破壊や悪意のあるシ�
 
 #### Antigravity IDE の場合
 
-IDE の項目名も 2.0 とは異なります（[Settings](https://antigravity.google/docs/ide/settings/) の Terminal Command Auto Execution と Artifact Review で設定します）。ただし P開発自律型 / A開発自律型は、サブエージェントをツールが自動作成できる **Antigravity 2.0** の方が向いています。
+IDE の項目名も Antigravity App とは異なります（[Settings](https://antigravity.google/docs/ide/settings/) の Terminal Command Auto Execution と Artifact Review で設定します）。ただし P開発自律型 / A開発自律型は、サブエージェントをツールが自動作成できる **Antigravity App** の方が向いています。
 
 <a id="global-rules基本法の設定とカスタマイズ"></a>
 ### Global Rules（基本法）の設定とカスタマイズ
@@ -314,7 +316,7 @@ IDE の項目名も 2.0 とは異なります（[Settings](https://antigravity.g
 本テンプレートは「人間」と「AIエージェント」というデフォルトの汎用名で書かれています。自分やAIに名前をつけたり、全プロジェクト共通の安全基準（基本法）を決めるには、グローバルスキル（ **`~/.gemini/config/skills/global/SKILL.md`** ）に以下を書いてください。
 
 > [!IMPORTANT]
-> **DADA固有のルールをグローバルルールに書かないでください。** グローバルルールは常時有効になるため、DADAプロセスを使わないプロジェクトにまで影響します。DADAプロセスの起動条件・原則はすべて **ワークスペース側**（`.agents/AGENTS.md`）に記載済みで、Antigravity v2はワークスペースを開いた時に `AGENTS.md` または `.agents/AGENTS.md` を自動的に読み込みます。この仕組みにより「DADAのワークスペースルールが存在するプロジェクトを開いた時だけ、自動的に厳格なDADAモードに切り替わる」というスコープ管理が実現されます。グローバル側に必要なのは、汎用的な「ワークスペースルールの尊重」だけです。
+> **DADA固有のルールをグローバルルールに書かないでください。** グローバルルールは常時有効になるため、DADAプロセスを使わないプロジェクトにまで影響します。DADAプロセスの起動条件・原則はすべて **ワークスペース側**（`.agents/AGENTS.md`）に記載済みで、Antigravity Appはワークスペースを開いた時に `AGENTS.md` または `.agents/AGENTS.md` を自動的に読み込みます。この仕組みにより「DADAのワークスペースルールが存在するプロジェクトを開いた時だけ、自動的に厳格なDADAモードに切り替わる」というスコープ管理が実現されます。グローバル側に必要なのは、汎用的な「ワークスペースルールの尊重」だけです。
 
 ```markdown
 ---
@@ -341,7 +343,7 @@ description: すべての会話セッションにおいて、マサ（ユーザ�
 ```
 
 > 💡 **全プロジェクト共通で使いたいスキルがある場合**
-> v2では、グローバルスキルを `~/.gemini/config/skills/` 配下に配置できます。本テンプレートのスキルはプロジェクト固有のため `.agents/skills/` （ワークスペーススコープ）に配置していますが、汎用的な自作スキルはグローバル側に置くと全プロジェクトで再利用できます。
+> Antigravity Appでは、グローバルスキルを `~/.gemini/config/skills/` 配下に配置できます。本テンプレートのスキルはプロジェクト固有のため `.agents/skills/` （ワークスペーススコープ）に配置していますが、汎用的な自作スキルはグローバル側に置くと全プロジェクトで再利用できます。
 
 <a id="context7-mcpサーバー-の設定について"></a>
 ### 🔌 context7 (MCPサーバー) の設定について
@@ -351,8 +353,8 @@ AIが最新のライブラリのドキュメントを自律的に参照できる
 #### (1) context7 API Keyの取得
 * [https://context7.com/](https://context7.com/) にサインインし、`More...` メニュー内の `Create API Key` からAPI Keyを取得します。
 
-#### (2) MCPサーバー設定（Antigravity 2.0 / IDE 共通）
-* v2では、MCP設定が **`~/.gemini/config/mcp_config.json`** に統一され、Antigravity 2.0・Antigravity IDE・Antigravity CLI のすべてで共有されます。
+#### (2) MCPサーバー設定（Antigravity App / IDE 共通）
+* Antigravity Appでは、MCP設定が **`~/.gemini/config/mcp_config.json`** に統一され、Antigravity App・Antigravity IDE・Antigravity CLI のすべてで共有されます。
   * **Windowsの場合**: `C:\Users\<ユーザー名>\.gemini\config\mcp_config.json`
   * **Macの場合**: `~/.gemini/config/mcp_config.json`
 * 以下のように `mcpServers` 内に `context7` の設定を追記し、`YOUR_API_KEY` を取得したキーに置き換えます。
@@ -492,12 +494,13 @@ AIが勝手に走り続けるわけではなく、**次の6つをすべて満た
 | # | スキルセット名 | 構成要素（スキル＋決定論的ツール＋知識） | 主な用途 |
 | :---: | :--- | :--- | :--- |
 | **(1)** | **DADAプロセス本体**<br>(`dada-core`) | `dada-process` + 8ペルソナスキル + `dada_check.py` + `agent_def_check.py` + `docs/guidelines/` | 要求定義→テスト仕様→設計→実装→評価の全工程開発 |
-| **(2)** | **Office文書スキルセット**<br>(`office-suite`) | [`.agents/skills/office-document/`](.agents/skills/office-document/SKILL.md) + [`tools/office_io.py`](tools/office_io.py) + [`docs/templates/office/`](docs/templates/office/README.md) (`Normal.dotm` / `Blank.potx`) | Word / Excel / パワポ / PDF の読み込み・対話編集・テンプレート変換・プレゼン自動生成 |
+| **(2)** | **Office文書スキルセット**<br>(`office-suite`) | [`.agents/skills/office-document/`](.agents/skills/office-document/SKILL.md) + [`tools/office_io.py`](tools/office_io.py) + [`docs/templates/office/`](docs/templates/office/README.md) (`Normal.dotm` / `Blank.potx`) | Word / Excel / パワポ / PDF の読み込み・対話編集・テンプレート変換 |
 | **(3)** | **人間らしい日本語への変換**<br>(`jp-humanizer`) | [`.agents/skills/JP-Humanizer/`](.agents/skills/JP-Humanizer/SKILL.md) + [`tools/style_check.py`](tools/style_check.py) + ASDoQ執筆・チェック基準 | 他のAIが書いた `.md` や仕様書の「AIっぽさ（AI-Slop）」を除去し、元の意味を保ったまま自然な日本語へ推敲 |
 
 ### 💡 使い方①：「Office文書扱い」だけを行う（例：パワポを対話しながら編集する）
 
 DADAプロセス（Phase 0〜5）を起動せずに、手元のPowerPoint（`.pptx`）やWord（`.docx`）、Excel（`.xlsx`）を渡して、AIとディスカッションしながら直接ブラッシュアップできます。
+（※DADAプロセスで作成した開発文書 `.md` をOffice文書に変換する手順・作成ファイル一覧は、[開発文書をOffice形式で作成する（任意・指示時のみ）](#開発文書をoffice形式で作成する任意指示時のみ) を参照してください。）
 
 **チャットの指示例（パワポを対話編集するとき）**:
 ```text
@@ -511,6 +514,7 @@ DADAプロセスの開発工程は使わず、office-document スキル単体で
 ```
 
 - AIは裏側で決定論的ツール `tools/office_io.py`（`import` / `patch` / `export` / `inspect`）を呼び出すため、**トークンをほとんど消費せず、元のスライドマスターやWordの見出し採番・余白を崩さずに**編集・出力します。
+- Markdown内の **Mermaid記法の図**（`flowchart` / `sequenceDiagram` 等）も、Word（`.docx`）やPowerPoint（`.pptx`）では**後から文字や配置を編集できるネイティブ図形とコネクタ矢印**に変換されます。PDFではベクター図形として描画されます。
 - 初回のみ、Office操作用ライブラリ（`pip install python-docx openpyxl python-pptx pypdf pdfplumber reportlab pillow lxml`）が必要です。
 
 ### 💡 使い方②：「人間っぽく書き直す（JP-Humanizer）」だけを行う
@@ -790,15 +794,15 @@ AIはコードや手順書を書く前に必ず「要求仕様書」や「設計
 |:---|:---|
 | **ドキュメント絶対主義と承認ゲート** | 決定事項はすべてドキュメント（Single Source of Truth）に集約されます。次の工程へ進む関門は、承認ゲート型では人の承認、自律型では点検ツールの合格と自己レビューです。どちらでも、仕様と実装のズレを構造的にゼロにします。（設計原則①⑥） |
 | **テストファーストの門番（要求の曖昧さの早期検出）** | 総合テスト仕様（SWP6）を設計より**先**に作成します。「テストが書けない要求＝曖昧な要求」であり、テスト項目を書く過程で要求の曖昧さ・矛盾が浮かび上がるため、設計・実装に流れ込む前にPhase 1へ差し戻せます。手戻りコストを最小化するVモデルの左シフトです。 |
-| **アテンション・リセット（コンテキスト汚染防止）** | フェーズ移行時、AIが自律的に不要な過去のチャット履歴（議論・推測）を捨て、最新の承認済みドキュメントだけに集中し直します。**ツールが自動的にサブエージェントを作る**場合（Antigravity 2.0 / CLI。推奨）は人間の操作は不要です。**人間がサブエージェントを作る**場合（Antigravity IDE）は、承認ゲート型なら新しいチャットの開始を依頼し、P開発自律型 / A開発自律型なら同一会話の論理リセット（方式C）で進みます。（設計原則②） |
+| **アテンション・リセット（コンテキスト汚染防止）** | フェーズ移行時、AIが自律的に不要な過去のチャット履歴（議論・推測）を捨て、最新の承認済みドキュメントだけに集中し直します。**ツールが自動的にサブエージェントを作る**場合（Antigravity App / CLI。推奨）は人間の操作は不要です。**人間がサブエージェントを作る**場合（Antigravity IDE）は、承認ゲート型なら新しいチャットの開始を依頼し、P開発自律型 / A開発自律型なら同一会話の論理リセット（方式C）で進みます。（設計原則②） |
 | **機械的検証の委譲（ハルシネーション対策）** | 「全要求にテスト項目があるか」「曖昧語が残っていないか」といった**網羅的な照合作業を、AIの推論から決定論的なスクリプト（`tools/dada_check.py`）へ移します**。AIは文書を全文読んで数える代わりにコマンドを1回実行し、短い結果を読むだけで済みます。取りこぼしと「確認したつもり」の虚偽報告を構造的に防ぎ、同時にトークンも節約します。 |
 | **Agenticな設計と自律カプセル化** | AIが自動デバッグしやすい「テスト容易性」と「疎結合アーキテクチャ」を設計段階で定義します。細かなコーディングはAI内に隠蔽（カプセル化）されます。総合テストもAIが実施して報告書を書き、承認ゲート型では人間がその報告書を承認します。Phase 5ではできあがったものを動かして評価します。（設計原則④） |
 | **一瞬の自己校正（Self-Correction）** | 各工程の作業後、AI自身が瞬時に「専門レビュアー」のペルソナへ切り替わり、人間の指示を待たずに品質基準に照らして自律的にチェックと修復を行います。機械が形式を保証した後なので、レビュアーの思考は**内容の妥当性**に集中します。（設計原則④） |
 | **ハイブリッド自律制御（トークンと品質の最適化）** | ASDoQ品質モデルを三層で活用します。執筆時は「執筆ルール12箇条」で違反を予防し、レビュー時はチェックリスト（軽量版）で高速に検出し、厳密な校正が必要な場合のみフル版（例文・違反例付き）をロードします。高い品質を保ちながらトークン消費を抑えます。（設計原則③） |
 | **不変条件と手順の分離（モデル進化への追随）** | ルールを「絶対に守る**不変条件**」と「品質の下限を保証する**手順**」の2層に分けています。手順は低性能モデルでも一定品質に届くよう細かく分解されていますが、**下限であって上限ではありません**。モデルが賢くなれば、不変条件を守ったまま手順を統合・最適化する「Autonomousプロファイル」へ切り替わり、能力を出し切れます。 |
 
-> 💡 **v2のSkillsとDADAの相性**
-> Antigravity v2のAgent Skillsは「Progressive Disclosure（段階的開示）」という設計思想を持ちます。エージェントは会話開始時にスキルの`name`と`description`だけを見て、必要になった瞬間に本文をロードします。これはDADAプロセスの「オンデマンド・ロード」「アテンション・リセット」の思想と完全に一致しており、v2への移行によりトークン効率がさらに向上しています。
+> 💡 **Antigravity AppのSkillsとDADAの相性**
+> Antigravity AppのAgent Skillsは「Progressive Disclosure（段階的開示）」という設計思想を持ちます。エージェントは会話開始時にスキルの`name`と`description`だけを見て、必要になった瞬間に本文をロードします。これはDADAプロセスの「オンデマンド・ロード」「アテンション・リセット」の思想と完全に一致しており、Antigravity Appへの移行によりトークン効率がさらに向上しています。
 
 ### 💪 DADAプロセスの強み — 適する開発領域
 
@@ -860,7 +864,7 @@ DADAプロセスは、ウォーターフォールモデルとアジャイル開�
 <a id="リポジトリ構成"></a>
 ## 📁 リポジトリ構成
 
-Antigravity v2のカスタマイズ体系（AGENTS.md + Agent Skills）に準拠した構成です。
+Antigravity Appのカスタマイズ体系（AGENTS.md + Agent Skills）に準拠した構成です。
 
 | ディレクトリ / ファイル | 役割 | 主な内容 |
 | :--- | :--- | :--- |
@@ -880,9 +884,11 @@ Antigravity v2のカスタマイズ体系（AGENTS.md + Agent Skills）に準拠
 
 上の表は、テンプレートを開いた時点のフォルダです。DADAプロセスで開発すると、次のファイルが増えます。ソースやスキルの置き場所の正は、設計書（SW205）の **成果物パス** です。ここに書いたのは典型例です。
 
-#### どちらを作っても共通（文書と帳票）
+#### どちらを作っても共通（文書と帳票：デフォルトはマークダウン形式）
 
-| フォルダ | できるファイル | いつ |
+**デフォルトでは、すべての開発文書・帳票はマークダウン形式（`.md`）で `docs/artifacts/` 直下に作成されます。** トークン消費量を抑えてAIの推論精度を高め、人間とAIが常に同じ単一の情報源（Single Source of Truth）を参照するためです。
+
+| フォルダ | できるファイル（マークダウン形式） | いつ |
 | :--- | :--- | :--- |
 | `docs/artifacts/` | `SW105_ソフトウェア要求仕様書.md` | Phase 1 |
 | `docs/artifacts/` | `SWP6_ソフトウェア総合テスト仕様書・報告書.md`（1〜4章が計画、5〜6章が結果） | Phase 2（計画）→ Phase 4（結果） |
@@ -891,6 +897,34 @@ Antigravity v2のカスタマイズ体系（AGENTS.md + Agent Skills）に準拠
 | `docs/process/` | `last_phase_summary.md`、`impl_progress.md`、点検結果 | 工程の切れ目と実装中。AIが更新する作業ファイル |
 
 自律型では `docs/process/autoloop_log.md` にも記録が残ります。
+
+<a id="開発文書をoffice形式で作成する任意指示時のみ"></a>
+#### 開発文書をOffice形式で作成する（任意・指示時のみ）
+
+ユーザから指示があれば、AIは `docs/artifacts/` のマークダウン文書から **Office形式（Word / Excel）やPDF形式の開発文書**を作成します。出力先はすべて **`docs/artifacts/office/`** フォルダ配下に統一されます（スキル `office-document` と `tools/office_io.py` を使用）。
+
+**チャットの指示例**:
+- **開発文書を一括でOffice・PDFに変換したいとき（Phase 4完了時や任意のタイミング）**:
+  ```text
+  開発文書一式をOfficeファイル（Word / Excel / PDF）に変換して出力してください。
+  ```
+- **特定の文書だけをWordやExcelに変換したいとき**:
+  ```text
+  要求仕様書（SW105）と設計書（SW205）を Word（.docx）に変換してください。
+  ```
+
+**作成されるOffice形式の開発文書一覧**:
+
+| 出力先フォルダ | 作成されるファイル | 形式 | 元になるマークダウン文書・内容 |
+| :--- | :--- | :--- | :--- |
+| `docs/artifacts/office/` | `SW105_ソフトウェア要求仕様書.docx` / `.pdf` | Word / PDF | `SW105_ソフトウェア要求仕様書.md`（標準テンプレート `Normal.dotm` 適用） |
+| `docs/artifacts/office/` | `SWP6_ソフトウェア総合テスト仕様書・報告書.docx` / `.xlsx` / `.pdf` | Word / Excel / PDF | `SWP6_ソフトウェア総合テスト仕様書・報告書.md`（テスト項目一覧と合否結果をシート別に整理） |
+| `docs/artifacts/office/` | `SW205_ソフトウェアアーキテクチャ設計書.docx` / `.pdf` | Word / PDF | `SW205_ソフトウェアアーキテクチャ設計書.md`（Mermaid構成図を編集可能な図形として描画） |
+| `docs/artifacts/office/` | `BUG101_バグ管理表.xlsx` | Excel | `BUG101_バグ管理表.md` |
+| `docs/artifacts/office/` | `TM101_トレーサビリティマトリクス.xlsx` | Excel | `TM101_トレーサビリティマトリクス.md`（ファイルが存在する場合に出力） |
+
+> 💡 **Mermaid記法の図も「後から編集可能な図形」としてOffice文書に入ります**
+> マークダウン内のMermaid記法の図（`flowchart` / `sequenceDiagram` 等）は、WordやPowerPointでは**Officeネイティブの図形とコネクタ矢印**に変換されます。変換後に文字の書き換えや位置の移動が可能です（PDF `.pdf` ではベクター図形として描画されます）。
 
 #### プログラムを作るとき（P開発承認ゲート型 / P開発自律型）
 
@@ -929,7 +963,7 @@ Antigravity v2のカスタマイズ体系（AGENTS.md + Agent Skills）に準拠
 | `dada-check/` | 機械的検証（ID対応照合・曖昧語走査・未実装検出）のスクリプトへの委譲 | コアスキル |
 | `unit-test-generator/` | 自律的なテストコード生成とデバッグ実行 | 開発支援スキル |
 | `document-writer/` | 開発ドキュメントの物理的な書き出しと整合性維持 | 基盤スキル |
-| `office-document/` | Word / Excel / PowerPoint / PDF の読み込み・差分パッチ・テンプレート変換・プレゼン自動生成（`tools/office_io.py` 連携） | 文書入出力スキル（単体利用可） |
+| `office-document/` | Word / Excel / PowerPoint / PDF の読み込み・差分パッチ・テンプレート変換（`tools/office_io.py` 連携） | 文書入出力スキル（単体利用可） |
 | `JP-Humanizer/` | AIっぽい不自然な日本語（AI-Slop）を元の意味を保持したまま自然な日本語へ構造推敲・評価（`tools/style_check.py` 連携） | 文書品質スキル（単体利用可） |
 | `context7-mcp/` | 最新ライブラリ情報の検索とドキュメント参照 | 調査スキル |
 
@@ -938,7 +972,7 @@ Antigravity v2のカスタマイズ体系（AGENTS.md + Agent Skills）に準拠
 > 💡 **トークン最適化の工夫**
 > - **機械作業のスクリプトへの委譲**: 「全REQ-IDに対応するTC-IDがあるか」の照合のために3つの文書を全文読み込む代わりに、`python tools/dada_check.py all` を1回実行して短い結果を読みます。文書が長くなるほど効果が大きく、しかも取りこぼしません。
 > - 各ペルソナスキルは「ペルソナと固有の思考プロセス」のみを記述し、共通ルール（ASDoQロード、ドキュメント構成準拠、レビュー記録）は `.agents/AGENTS.md` の「共通行動指針」に集約しています（DRY原則）。
-> - v2のSkillsはProgressive Disclosure（会話開始時は`description`のみ、必要時に本文をロード）で動作するため、v1のRole方式よりもさらにコンテキスト消費が抑えられます。
+> - Antigravity AppのSkillsはProgressive Disclosure（開始時は`description`のみ、必要時に本文をロード）で動くため、v1よりコンテキスト消費が抑えられます。
 > - ASDoQ品質モデルは「執筆ルール12箇条（作成者向け）」「軽量チェックリスト版（レビュアー向け・約3KB）」「フル版（例文付き・22KB）」の三層構えで、通常時のトークン消費を大幅に抑えます。執筆時に違反を予防する方が、レビューで検出して修正ループを回すよりトークン効率が高くなります。
 > - **二重出力の禁止**: 成果物・レビュー指摘の全文はファイルにのみ書き、チャットにはパスとサマリだけを出力します。レビュー中も対象文書やソースコードの本文をチャットへ再掲せず、ID（REQ/TC/UNIT）や「ファイルパス:行番号」で参照します。
 > - **差分レビュー**: 自己校正ループの2周目は全文を再レビューせず、Open指摘と修正で変更された箇所だけを対象にします（各レビュアースキルに手順を内蔵）。
@@ -1019,7 +1053,7 @@ Antigravity v2のカスタマイズ体系（AGENTS.md + Agent Skills）に準拠
 9. **「何を作るか（What）」を指示し、「どう作るか（How）」はAIに任せる**
    * 実装の細部を指導するより、目的や仕様を明確に伝えた方が、AIはアーキテクチャ全体を考慮した最適な実装を自律的に行えます。
 
-10. **（Antigravity 2.0）組み込みスラッシュコマンドとの併用**
+10. **（Antigravity App）組み込みスラッシュコマンドとの併用**
     * `/goal` を併用すると、途中で人間に確認を求めずタスク完了まで走り切るモードになります。ただし承認ゲート型の承認ゲートと競合するため、**Phase 4（実装・総合テスト報告）の中でのみ**使うか、最初から **P開発自律型 / A開発自律型** を選んでください。
     * `/grill-me` は、要求の壁打ち（Phase 1）を深めたい時に有効です。
 
@@ -1048,31 +1082,31 @@ Antigravity v2のカスタマイズ体系（AGENTS.md + Agent Skills）に準拠
 
 14. **開発の前後で作業ブランチを使う**
     * DADAプロセスは速いので、起動前に作業ブランチを切り、区切りがついたらマージする癖をつけてください。失敗したら、マージ前ならブランチを切る前へ、マージ後ならマージ前の版へ戻ります。
-    * Git のコマンドに慣れていなくても、Antigravity 2.0 のチャットで頼めます。その前に `git --version` が通ること。手順とチャット例は [作業ブランチ](#作業ブランチ) です。
+    * Git のコマンドに慣れていなくても、Antigravity App のチャットで頼めます。その前に `git --version` が通ること。手順とチャット例は [作業ブランチ](#作業ブランチ) です。
     * **P開発自律型 / A開発自律型** で確認ダイアログを外すときは、先にブランチを切ってから [自動実行ポリシー](#自動実行ポリシー) を変えてください。ダイアログを外しても、DADAの自律ゲート（6条件）と必須停止（9項目）は残ります。
 
 15. **自律型では、Antigravity の確認ダイアログも外す**
     * 既定では、コマンド実行とファイル適用のたびに人間確認が入ります。DADAの工程ゲートとは別なので、自律型の指示だけでは Loop が止まります。
-    * Antigravity 2.0 では、対象プロジェクトの **Security Preset** を Turbo Mode、**Artifact Review Policy** を Always Proceed にします。コマンドだけ限定許可するなら Local Permissions の Terminal Commands です。手順は [自動実行ポリシー](#自動実行ポリシー) です。
+    * Antigravity App では、対象プロジェクトの **Security Preset** を Turbo Mode、**Artifact Review Policy** を Always Proceed にします。コマンドだけ限定許可するなら Local Permissions の Terminal Commands です。手順は [自動実行ポリシー](#自動実行ポリシー) です。
 
 ---
 
 <a id="他のツールで使う"></a>
 ## 🔄 他のツールで使う（Codex / Claude Code / Cursor / GitHub Copilot）
 
-このリポジトリは **Antigravity** を主対象に作られています。DADAの工程・開発文書（`docs/`）・点検ツール（`tools/`）は、どのツールでも同じです。変わるのは、**そのツールが「ルール」と「スキル」を探すフォルダ**だけです。
+このリポジトリは **Antigravity App**（および Antigravity CLI / IDE）を主対象に作られています。DADAの工程・開発文書（`docs/`）・点検ツール（`tools/`）は、どのツールでも共通です。変わるのは、**そのツールが「ルール」と「スキル」を最初に探すファイルパス**だけです。
 
 > [!NOTE]
-> この章の設定ファイル名や手順は **参考情報** です。各ツールの仕様は、**バージョンや環境**（IDE / CLI / クラウド、組織のポリシー）によって更新される場合があります。下の [移行方法（チャットに貼るだけ）](#移行方法チャットに貼るだけ) のように、使っているツール自身に「自環境に合わせてカスタマイズして」と依頼すれば、その時点の最新仕様に自動追従してセットアップできます。
+> 2025〜2026年にかけて、ワークスペース指示ファイル **`AGENTS.md`** と、オンデマンドで読み込む **`Agent Skills`（`.agents/skills/<name>/SKILL.md`）** は業界横断のオープン標準になりました。そのため、本リポジトリの `.agents/skills/` は多くのツールで**コピーや変換なしにそのまま認識**されます。
 
-次の4つへの置き方を説明します。
+次の4つのツールで使う方法を説明します。
 
-| 使いたいツール | 会社 |
-| :--- | :--- |
-| **Codex** | OpenAI |
-| **Claude Code** | Anthropic |
-| **Cursor** | SpaceXAI |
-| **GitHub Copilot** | GitHub / Microsoft |
+| 使いたいツール | 開発元 | ルール（常時適用）の読み込み先 | スキル（`.agents/skills/`）の対応状況 |
+| :--- | :--- | :--- | :--- |
+| **Codex** | OpenAI | リポジトリ直下の `AGENTS.md` | **`.agents/skills/` を標準で自動認識**（コピー不要） |
+| **Claude Code** | Anthropic | リポジトリ直下の `CLAUDE.md`（または `.claude/CLAUDE.md`） | `.claude/skills/` を認識（`CLAUDE.md` から `.agents/skills/` を案内するか、シンボリックリンクで共有） |
+| **Cursor** | Anysphere | リポジトリ直下の `AGENTS.md`、または `.cursor/rules/*.mdc` | **`.agents/skills/` を標準で自動認識**（コピー不要） |
+| **GitHub Copilot** | GitHub / Microsoft | リポジトリ直下の `AGENTS.md`、または `.github/copilot-instructions.md` | **`.agents/skills/` を標準で自動認識**（コピー不要） |
 
 Git や Python の準備、作業ブランチ、開発の起動文は、Antigravity のときと同じです。[使い方](#使い方) の Step 1〜2（リポジトリを用意する）まで済ませてから、この章へ進んでください。Step 3 で開くものが Antigravity ではなく、上のどれかになります。
 
@@ -1085,42 +1119,41 @@ AIに「いつも守ってほしいこと」と「この作業のときだけ読
 | **ルール** | [`.agents/AGENTS.md`](.agents/AGENTS.md) | 職場の就業規則。会話が始まるときから常に適用される |
 | **スキル** | [`.agents/skills/`](.agents/skills/) の各フォルダにある `SKILL.md` | 作業マニュアル。必要なときだけ読む |
 
-Antigravity は、この `.agents/` を最初から読みます。一方、Codex / Claude Code / Cursor / GitHub Copilot は、**別のファイル名やフォルダ**を最初に見に行きます。なお、GitHub Copilot のスキルだけは `.agents/skills/` も公式に読むため、スキルのコピーは不要です。だから「DADAの中身を書き換える」のではなく、**そのツールが見に行く場所へ、案内を置く**（または同じファイルを置く）のがカスタマイズです。
+Antigravity App は、この `.agents/AGENTS.md` と `.agents/skills/` を最初から直接読みます。
+一方、**Codex / Cursor / GitHub Copilot** はスキル（`.agents/skills/`）をそのまま読めますが、ルールはリポジトリ直下の `AGENTS.md`（または `.github/copilot-instructions.md`）を最初に見に行きます。また **Claude Code** はリポジトリ直下の `CLAUDE.md`（`@ファイルパス` 記法で他ファイルをインポート可能）を見に行きます。
 
-おすすめは、元の `.agents/` はそのまま残し、案内役のファイルを1つ足す方法です。ルールやスキルを二重に書き写すと、あとから直したときにずれます。
+そのため、元の `.agents/` の中身は一切書き換えず、**リポジトリ直下に数行の「案内ファイル（`AGENTS.md` や `CLAUDE.md`）」を1つ置く**のが最も保守性の高い方法です。ルールやスキルを別フォルダへ丸ごとコピーすると、あとから更新したときに内容がずれます。
 
 <a id="移行方法チャットに貼るだけ"></a>
 ### 移行方法（チャットに貼るだけ）
 
-各ツール（Claude Code, Cursor, GitHub Copilot, Codex 等）のAIは、「自ツールがどのファイルをルールやスキルとして読み込むか」を熟知しています。そのため、手動でフォルダやファイルを作るより、**使いたいツール自身に設定ファイルを作らせる**のが最も安全で確実です。
+各ツール（Codex, Claude Code, Cursor, GitHub Copilot 等）のAIは、「自ツールがどのファイルをルールやスキルとして読み込むか」を把握しています。手動でファイルを作るより、**使いたいツール自身に案内ファイルを作らせる**のが最も簡単で確実です。
 
 1. 使いたいツールで、このリポジトリのフォルダを開きます。
-2. ファイルの作成・編集が可能なチャット（Agentモード / Composer等）を開き、以下をコピーして送信します。
+2. ファイルの作成・編集が可能なチャット（Agentモード等）を開き、以下をコピーして送信します。
 
 ```text
-このリポジトリはAntigravity 2.0向けに設計されたDADA（Document-and-Agent-Driven Agile）プロセスの資産です。
+このリポジトリはAntigravity App向けに設計されたDADA（Document-and-Agent-Driven Agile）プロセスの資産です。
 
 【指示】
 既存のAntigravity用資産（.agents/、docs/、tools/ 等）は一切変更・削除せずそのまま維持した上で、
-あなたが動作しているこの開発環境（Cursor / Claude Code / GitHub Copilot / Codex 等）でDADAプロセスが正しく動作するように、必要な設定ファイル（ルール・スキル定義）を新規作成・カスタマイズしてください。
+あなたが動作しているこの開発環境（Codex / Claude Code / Cursor / GitHub Copilot 等）でDADAプロセスが正しく動作するように、必要な案内ファイル（ルール・スキル参照設定）を新規作成してください。
 
 【厳守要件】
 1. コアロジックの重複防止:
-   ルール本文やスキル定義を丸ごと再作成しないでください。各ツールの設定ファイルからは、既存の「.agents/AGENTS.md」および「.agents/skills/」を参照（インポート・案内）する形にしてください。
+   ルール本文やスキル定義を丸ごとコピーして再作成しないでください。各ツールの設定ファイル（リポジトリ直下の AGENTS.md、CLAUDE.md、.github/copilot-instructions.md 等）からは、既存の「.agents/AGENTS.md」および「.agents/skills/」を参照（インポート・案内）する形にしてください。
 2. 資産の整合性保護:
    「docs/」配下の開発成果物・テンプレート、および「tools/」配下の点検スクリプトは変更しないでください。
 3. 完了報告:
    新規作成した設定ファイルの一覧と、この環境でDADAプロセスを起動するための手順（新しいチャットを開く、権限設定を行う等）を簡潔に報告してください。
 ```
 
-3. AIが必要な案内ファイル（例：Claude Codeなら `CLAUDE.md`、Cursorならリポジトリ直下の `AGENTS.md` や `.cursor/rules/`、GitHub Copilotなら `.github/copilot-instructions.md` など）を自動生成します。
+3. AIが必要な案内ファイルを自動生成します。
 
 > [!TIP]
-> **生成される案内ファイルの主な場所（参考）**
-> - **Codex**: リポジトリ直下の `AGENTS.md`
-> - **Claude Code**: リポジトリ直下の `CLAUDE.md`（または `.claude/CLAUDE.md`）
-> - **Cursor**: リポジトリ直下の `AGENTS.md`、または `.cursor/rules/`
-> - **GitHub Copilot**: `.github/copilot-instructions.md`
+> **各ツールで生成される案内ファイルの最小構成（参考）**
+> - **Codex / Cursor / GitHub Copilot**: リポジトリ直下に `AGENTS.md` を1つ置き、「`.agents/AGENTS.md` を厳守し `.agents/skills/` を使用すること」と数行書くだけで全ツール共通で機能します。GitHub Copilot向けに `.github/copilot-instructions.md` を併用しても構いません。
+> - **Claude Code**: リポジトリ直下に `CLAUDE.md` を置き、`@.agents/AGENTS.md` と書いてルールをインポートします。スキルは `.agents/skills/<name>/SKILL.md` を参照するよう案内するか、`.claude/skills` からシンボリックリンクを張ります。
 
 ---
 
@@ -1130,10 +1163,10 @@ Antigravity は、この `.agents/` を最初から読みます。一方、Codex
 
 | Antigravityでの設定項目 | 他のツールでの読み替え・設定方法 |
 | :--- | :--- |
-| **自動実行ポリシー**<br>（自律型での確認ダイアログの解除） | コマンド実行やファイル更新時の確認ダイアログを外し、自律動作させる設定です。<br>・**VS Code (Copilot)**: チャットの権限ピッカーで「Bypass Approvals」または「Autopilot」を選択。<br>・**GitHub Copilot CLI**: 起動時オプション `--allow-all-tools`、またはセッション中に `/allow-all`。<br>・**Claude Code / Cursor / Codex**: 設定画面やCLIオプションで、ターミナル実行・ファイル書き込みの自動許可（Auto-approve等）を有効化。 |
-| **Global Rules（基本法）**<br>（ユーザーとAIの名前、安全基準） | 全プロジェクト共通の個人設定です。<br>・**Codex**: `~/.codex/` 配下のグローバル設定<br>・**Claude Code**: `~/.claude/` 配下のグローバル指示<br>・**Cursor**: Cursorの設定（Settings > Rules for AI）<br>・**GitHub Copilot**: VS Codeのユーザー設定、または `~/.copilot/` |
-| **context7 MCPサーバー**<br>（最新ドキュメントの自律参照） | ツールがMCP（Model Context Protocol）に対応している場合（Claude Code, Cursor等）、各ツールのMCP設定ファイルに `context7` の設定を追加してください。 |
-| **動作モード（サブエージェント）** | Antigravity 2.0 以外の環境では、ツールが工程ごとにサブエージェントを自動生成できない場合があります。その場合は「人間が新しいチャットを開く」か、「同一セッション内での論理リセット」として進行します（[サブエージェントの作り方](#サブエージェントの作り方) 参照）。 |
+| **自動実行ポリシー**<br>（自律型での確認ダイアログの解除） | コマンド実行やファイル更新時の確認ダイアログを外し、自律動作させる設定です。<br>・**Codex**: CLI起動時に `--full-auto`（ワークスペース内自動実行）、または設定で `approval_policy = "never"`。<br>・**Claude Code**: セッション中に `Shift+Tab` で Auto-Accept モードへ切替、または `.claude/settings.json` の `permissions.allow` に `Bash(python *)` 等を登録（隔離環境での完全自動は `--dangerously-skip-permissions`）。<br>・**Cursor**: Cursor Settings > Features / Agent > **Yolo Mode**（Auto-run）を有効化し、許可コマンドに `python` や `pytest` を登録。<br>・**GitHub Copilot**: VS Code チャットの権限設定で自動承認（Auto-Approve / Bypass Approvals）を選択、または Copilot CLI で `--allow-all-tools`（セッション中は `/allow-all`）。 |
+| **Global Rules（基本法）**<br>（ユーザーとAIの名前、安全基準） | 全プロジェクト共通の個人設定です。<br>・**Codex**: `~/.codex/AGENTS.md` および `~/.codex/config.toml`<br>・**Claude Code**: `~/.claude/CLAUDE.md`<br>・**Cursor**: Cursor Settings > Rules > User Rules（および `~/.cursor/skills/`）<br>・**GitHub Copilot**: VS Code の User Instructions 設定、または `~/.copilot/copilot-instructions.md` |
+| **context7 MCPサーバー**<br>（最新ドキュメントの自律参照） | 各ツールのMCP設定ファイルに `context7` を追加します。<br>・**Codex**: `~/.codex/config.toml` の `[mcp_servers.context7]`<br>・**Claude Code**: `claude mcp add context7 -- npx -y @upstash/context7-mcp --api-key YOUR_API_KEY`（または `.mcp.json` / `~/.claude.json`）<br>・**Cursor**: `.cursor/mcp.json` または `~/.cursor/mcp.json`<br>・**GitHub Copilot (VS Code)**: `.vscode/mcp.json` またはユーザー設定の `mcp.servers` |
+| **動作モード（サブエージェント）** | 工程の切れ目でコンテキストを分ける方法です（[サブエージェントの作り方](#サブエージェントの作り方) 参照）。<br>・**サブエージェント起動ツールを持つ環境**（Claude Code の `Task` サブエージェント、Cursor / Copilot / Codex のサブエージェント機能）では、ツールが工程ごとに独立したサブエージェントを起動して「方式A（ツール自動作成）」と同様にコンテキストを分離できます。<br>・サブエージェントを自動起動しない環境では、承認ゲート型なら「人間が新しいチャットを開く（方式B）」、自律型なら「同一セッション内での論理リセット（方式C）」として進行します。 |
 
 ---
 
@@ -1145,7 +1178,7 @@ Antigravity は、この `.agents/` を最初から読みます。一方、Codex
 
 > [!IMPORTANT]
 > **ツール名の読み替えについて**  
-> 以降のドキュメント（Step 3 〜 Step 5、および [4つの使い方](#4つの使い方何を作るか--どう進めるか) 等）では、説明の便宜上「Antigravity」を基準に記載しています。他ツールをお使いの場合は、**「Antigravity」と書かれている部分をご自身のツール名（Cursor / Claude Code / GitHub Copilot / Codex 等）に読み替えて**そのまま進めてください。
+> 以降のドキュメント（Step 3 〜 Step 5、および [4つの使い方](#4つの使い方何を作るか--どう進めるか) 等）では、説明の便宜上「Antigravity」を基準に記載しています。他ツールをお使いの場合は、**「Antigravity」と書かれている部分をご自身のツール名（Codex / Claude Code / Cursor / GitHub Copilot 等）に読み替えて**そのまま進めてください。
 
 ---
 
@@ -1161,8 +1194,8 @@ Antigravity は、この `.agents/` を最初から読みます。一方、Codex
 
 | 症状 | まず見ること |
 | :--- | :--- |
-| 開発を頼んでもDADAの工程に入らない | 生成された案内ファイルから `.agents/AGENTS.md` と `dada-process` を読む指示があるか確認してください。フォルダの開き直しや、GitHub Copilotならチャットが **Agent** モードになっているかを確認してください。 |
-| スキルが無いと言われる | スキル本文が `.agents/skills/` に残っているか確認してください。GitHub Copilot なら `/skills` または `/skills list` で `dada-process` が認識されているか確認してください。 |
+| 開発を頼んでもDADAの工程に入らない | 生成された案内ファイル（`AGENTS.md` / `CLAUDE.md` 等）から `.agents/AGENTS.md` と `dada-process` を読む指示があるか確認してください。フォルダの開き直しや、チャットが **Agent** モードになっているかも確認してください。 |
+| スキルが無いと言われる | スキル本文が `.agents/skills/` に残っているか確認してください。Codex / Cursor / GitHub Copilot は `.agents/skills/` を直接認識します（Copilot や Claude Code では `/skills` で認識状態を確認できます）。 |
 | 点検ツールが動かない | 移植の問題ではなく、環境のPythonの問題です。ターミナルで `python --version`（Python 3.8以降）が通るかを確認してください。 |
 
 ---
@@ -1177,10 +1210,10 @@ Antigravity は、この `.agents/` を最初から読みます。一方、Codex
 
 ---
 
-<a id="antigravity-20-の左欄とサブエージェント"></a>
-## 🖥️ Antigravity 2.0 の左欄とサブエージェント
+<a id="antigravity-app-の左欄とサブエージェント"></a>
+## 🖥️ Antigravity App の左欄とサブエージェント
 
-Antigravity 2.0 で **P開発自律型 / A開発自律型**（承認ゲート型でも同じ）を使うと、工程の切れ目でツールがサブエージェントを自動生成します。要求定義からアーキテクチャ設計へ切り替わるときなどに作業を引き継ぎ、過去の会話が次工程に残らないようにするためです（アテンション・リセット）。
+Antigravity App で **P開発自律型 / A開発自律型**（承認ゲート型でも同じ）を使うと、工程の切れ目でツールがサブエージェントを自動生成します。要求定義からアーキテクチャ設計へ切り替わるときなどに作業を引き継ぎ、過去の会話が次工程に残らないようにするためです（アテンション・リセット）。
 
 このとき、**左欄（会話一覧）には、そのサブエージェントは追加されません。** 人間が新しく会話スレッドを作ったときだけ左欄に行が増える、というのが Antigravity の仕様です。システムは工程のたびにサブエージェントを作るので、すべてを左欄に出すと一覧が見にくくなるための省略です。
 

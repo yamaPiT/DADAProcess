@@ -68,7 +68,7 @@ DADAプロセスは、IPAのESPR（ESPR Ver.2.0：【改訂版】 組込みソ�
 
 ## 5. 開発文書と管理表の運用
 - 開発成果文書は必ず `docs/artifacts/` ディレクトリ配下に保存してください。
-- **基本はMarkdown形式（`.md`）で進行し、Office文書はオンデマンドで扱う**: トークン消費量を抑えて推論精度を高めるため、通常のDADAプロセスでは `.md` ファイルのみを `docs/artifacts/` に作成します。既存のOffice文書・PDFから開発・差分改訂を始める場合や、Product OwnerからOffice文書・プレゼン資料（`.pptx`）への変換を求められた場合に限り、スキル `.agents/skills/office-document/SKILL.md` と `tools/office_io.py` を使用します。
+- **基本はMarkdown形式（`.md`）で進行し、Office文書はオンデマンドで扱う**: トークン消費量を抑えて推論精度を高めるため、通常のDADAプロセスでは `.md` ファイルのみを `docs/artifacts/` に作成します。既存のOffice文書・PDFから開発・差分改訂を始める場合や、Product OwnerからOffice文書への変換を求められた場合に限り、スキル `.agents/skills/office-document/SKILL.md` と `tools/office_io.py` を使用します。
 - **文書ID早見表**（IDと文書を取り違えないこと）:
 
 | 文書ID | 文書名 | 作成Phase |
@@ -76,7 +76,6 @@ DADAプロセスは、IPAのESPR（ESPR Ver.2.0：【改訂版】 組込みソ�
 | SW105 | ソフトウェア要求仕様書 | Phase 1 |
 | SWP6 | ソフトウェア総合テスト仕様書・報告書 | Phase 2（計画）/ Phase 4（結果・報告） |
 | SW205 | ソフトウェアアーキテクチャ設計書 | Phase 3 |
-| PRES101 | 開発成果プレゼンテーション（任意・Product Ownerの要求時のみ） | Phase 4完了後またはPhase 5 |
 
 - **文書IDは開発対象によって変わらない**: 開発対象が「エージェント定義」の場合も、文書IDは上表のままとし、ID体系（`REQ` / `TC` / `UNIT`）も変更しない。使用するひな形のみを `docs/templates/agent/` 配下へ差し替える（詳細は第9節）。
 - **レビュー記録表 (REV101)**: 工程別に `REV101_Requirements.md`（Phase 1）, `REV101_Test.md`（Phase 2の計画および Phase 4の報告書）, `REV101_Design.md`（Phase 3）を使用し、指摘と修正結果を記録します。

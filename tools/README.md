@@ -6,7 +6,7 @@
 | :--- | :--- | :--- |
 | `dada_check.py` | 開発文書（SW105 / SWP6 / SW205）とソースコード | **常時**（全Phaseの承認ゲート前） |
 | `agent_def_check.py` | エージェント定義の成果物（`SKILL.md`・参照パス・ツール・評価記録） | **開発対象がエージェント定義の場合**（Phase 3〜4） |
-| `office_io.py` | Office文書・PDF（`.docx` / `.xlsx` / `.pptx` / `.pdf`）と `.md` の相互変換・差分反映・プレゼン自動生成 | **Product Ownerが求めたとき、既存Office資産から開始するとき、または単体でOffice文書を編集するとき** |
+| `office_io.py` | Office文書・PDF（`.docx` / `.xlsx` / `.pptx` / `.pdf`）と `.md` の相互変換・差分反映 | **Product Ownerが求めたとき、既存Office資産から開始するとき、または単体でOffice文書を編集するとき** |
 | `style_check.py` | 日本語推敲・AI-Slop（AIっぽい不自然な表現）検出・推敲前後の意味保持検証 | **常時**（開発文書の執筆3ステップ・レビュー3ステップ、および単体での文章推敲） |
 | `export_skillset.py` | 3種類のスキルセット（`dada-core` / `office-suite` / `jp-humanizer`）の独立切り出し | **特定のスキルセットだけを別リポジトリ・別プロジェクトへ切り出すとき** |
 
@@ -185,15 +185,15 @@ python tools/style_check.py verify --input docs/artifacts/SW105_ソフトウェ�
 
 ## office_io.py（Office文書・PDF 決定論的I/Oツール）
 
-Product Ownerから求められた場合や既存のOffice文書から差分開発を始める場合に、LLMのトークンを消費せず相互変換・差分パッチ・プレゼン生成（`PRES101`）を行うツールです（詳細は `.agents/skills/office-document/SKILL.md` 参照）。
+Product Ownerから求められた場合や既存のOffice文書から差分開発を始める場合に、LLMのトークンを消費せず相互変換・差分パッチを行うツールです（詳細は `.agents/skills/office-document/SKILL.md` 参照）。
 
 ```bash
-# テンプレート確認 / 既存文書インポート / テンプレート適用エクスポート / 差分パッチ / プレゼン生成
-python tools/office_io.py init-templates --summary
+# テンプレート確認 / 既存文書インポート / テンプレート適用エクスポート / 差分パッチ / 一括変換
+python tools/office_io.py init-templates
 python tools/office_io.py import --input <既存文書> --output <出力.md> --summary
-python tools/office_io.py export --input <入力.md> --output <出力ファイル> --summary
+python tools/office_io.py export --input <入力.md> --output docs/artifacts/office/<出力ファイル> --summary
 python tools/office_io.py patch --base <既存Office文書> --input <改訂.md> --output <出力ファイル> --summary
-python tools/office_io.py gen-pres --artifacts-dir docs/artifacts --output docs/artifacts/PRES101_開発成果プレゼンテーション.pptx --summary
+python tools/office_io.py batch-export --artifacts-dir docs/artifacts --out-dir docs/artifacts/office --summary
 ```
 
 ## export_skillset.py（3種類のスキルセットの独立切り出しツール）

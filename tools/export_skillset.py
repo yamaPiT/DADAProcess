@@ -37,7 +37,7 @@ SKILLSETS: Dict[str, Dict[str, object]] = {
         "title": "Office Document Suite（Word / Excel / PowerPoint / PDF 入出力スキルセット）",
         "description": (
             "既存のOffice文書・PDFの読み込み、対話しながらの差分編集、テンプレート（Normal.dotm / Blank.potx）を"
-            "用いた新規文書・プレゼン資料生成を、LLMトークンを節約して行う独立スキルセット。"
+            "用いた新規文書変換を、LLMトークンを節約して行う独立スキルセット。"
         ),
         "paths": [
             ".agents/skills/office-document",
