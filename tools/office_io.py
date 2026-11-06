@@ -303,10 +303,102 @@ def strip_heading_number(text: str) -> str:
 # ---------------------------------------------------------------------------
 
 def _clean_mermaid_label(raw: str) -> str:
+    import html
+
     s = raw.strip().strip("\"'")
-    s = s.replace("<br/>", "\n").replace("<br />", "\n").replace("<br>", "\n")
-    s = re.sub(r"</?[^>]+>", "", s)
+    s = re.sub(r"<br\s*/?>", "\n", s, flags=re.IGNORECASE)
+    s = s.replace("\\n", "\n")
+    # 実際のHTML装飾タグのみを除去し、<FileName> や <対象.md> 等の山括弧プレースホルダは保持する
+    s = re.sub(
+        r"</?(?:b|i|u|s|strong|em|sub|sup|span|div|p|small|font|code|mark)(?:\s+[^>]*)?>",
+        "",
+        s,
+        flags=re.IGNORECASE,
+    )
+    s = html.unescape(s)
     return s.strip()
+
+
+def _mermaid_char_units(ch: str) -> float:
+    """文字の表示幅ユニット（半角英数=1.0、英大文字=1.15、全角文字=2.0）を返す。"""
+    import unicodedata
+
+    if ord(ch) <= 127:
+        return 1.15 if ("A" <= ch <= "Z") else 1.0
+    eaw = unicodedata.east_asian_width(ch)
+    return 2.0 if eaw in ("F", "W", "A") else 1.2
+
+
+def _mermaid_display_units(text: str) -> float:
+    return sum(_mermaid_char_units(ch) for ch in text)
+
+
+def _wrap_mermaid_segment(seg: str, max_units: float) -> List[str]:
+    """1行のセグメントを自然な区切り（空白・スラッシュ・アンダースコア・句読点）優先で折り返す。"""
+    s = seg.strip()
+    if not s:
+        return []
+    if _mermaid_display_units(s) <= max_units:
+        return [s]
+
+    # 区切り文字の直後で分割可能なトークン列を作る
+    tokens = re.findall(r"[^\s/_、・：:]+[\s/_、・：:]*", s)
+    if not tokens:
+        tokens = [s]
+
+    lines: List[str] = []
+    cur = ""
+    for tok in tokens:
+        cand = (cur + tok) if cur else tok.lstrip()
+        if _mermaid_display_units(cand) <= max_units:
+            cur = cand
+        else:
+            if cur.strip():
+                lines.append(cur.strip())
+                cur = ""
+            tok_clean = tok.strip()
+            if _mermaid_display_units(tok_clean) <= max_units:
+                cur = tok
+            else:
+                # 単一トークンが長すぎる場合は文字単位で折り返す
+                buf = ""
+                for ch in tok_clean:
+                    if _mermaid_display_units(buf + ch) > max_units and buf:
+                        lines.append(buf)
+                        buf = ch
+                    else:
+                        buf += ch
+                cur = buf
+    if cur.strip():
+        lines.append(cur.strip())
+    return lines
+
+
+def _wrap_mermaid_label(label: str, max_units: float = 16.0) -> List[str]:
+    """
+    Mermaidノード/エッジのラベルが図形枠から溢れないよう、
+    改行・括弧（(...) / （...））・パス区切り（/ や _）の自然な境界で複数行に分割する。
+    """
+    raw_lines = [ln.strip() for ln in str(label or "").split("\n") if ln.strip()]
+    if not raw_lines:
+        return [""]
+
+    wrapped: List[str] = []
+    for ln in raw_lines:
+        # 「役割名 (English)」「議事録 (docs/...)」のように括弧を含む中〜長文は括弧の手前で改行する
+        m_paren = re.match(r"^(.+?)\s*([（(].+[）)])$", ln)
+        if m_paren and _mermaid_display_units(ln) > 13.0 and _mermaid_display_units(m_paren.group(1)) <= max_units:
+            head = m_paren.group(1).strip()
+            tail = m_paren.group(2).strip()
+            wrapped.append(head)
+            # 括弧内のパス等（例: <FileName>_議事録.md)）が途中で不自然に切れないよう許容幅を確保
+            wrapped.extend(_wrap_mermaid_segment(tail, max(max_units, 22.0)))
+            continue
+        if _mermaid_display_units(ln) <= max_units:
+            wrapped.append(ln)
+            continue
+        wrapped.extend(_wrap_mermaid_segment(ln, max_units))
+    return wrapped or [str(label).strip()]
 
 
 def _parse_mermaid_node_token(token: str, nodes: Dict[str, Dict[str, str]], order: List[str]) -> Optional[str]:
@@ -314,6 +406,8 @@ def _parse_mermaid_node_token(token: str, nodes: Dict[str, Dict[str, str]], orde
     t = token.strip()
     if not t:
         return None
+    # :::className スタイル指定サフィックスを除去
+    t = re.sub(r":::[A-Za-z0-9_\-]+$", "", t).strip()
     if t == "[*]":
         nid = "__STAR__"
         if nid not in nodes:
@@ -327,6 +421,8 @@ def _parse_mermaid_node_token(token: str, nodes: Dict[str, Dict[str, str]], orde
         (r'^([A-Za-z0-9_.\-]+)\s*\(\(\s*(.+?)\s*\)\)$', "oval"),
         (r'^([A-Za-z0-9_.\-]+)\s*\{\{\s*(.+?)\s*\}\}$', "diamond"),
         (r'^([A-Za-z0-9_.\-]+)\s*\{\s*(.+?)\s*\}$', "diamond"),
+        (r'^([A-Za-z0-9_.\-]+)\s*\[\[\s*(.+?)\s*\]\]$', "rect"),
+        (r'^([A-Za-z0-9_.\-]+)\s*\[/\s*(.+?)\s*/\]$', "rect"),
         (r'^([A-Za-z0-9_.\-]+)\s*\[\s*(.+?)\s*\]$', "rect"),
         (r'^([A-Za-z0-9_.\-]+)\s*\(\s*(.+?)\s*\)$', "round"),
     ]
@@ -426,10 +522,6 @@ def parse_mermaid_diagram(mermaid_code: str) -> Dict[str, Any]:
     node_order: List[str] = []
     edges: List[Dict[str, Any]] = []
 
-    edge_split_re = re.compile(
-        r"\s*(<\-\.\->|<\-\->|\-\.\->|\-\.[^\n]*?\.\->|==>|===|\-\-\->|\-\->|\-\-[^\n\-]*?\-\->|\-\-\s+[^\n\-]+?\s+\-\->|\-\-\||\|\-\->|\-\->\|[^|]*\||\|\-\.\->|\-\.\->\|[^|]*\||\|\|..\{|\|\|\-\-o\{|\|\|\-\-\|\||\}o\-\-\|\||<\|--|\*--|o--|\-\-\-)\s*"
-    )
-
     body_lines = lines[1:] if re.match(r"^(flowchart|graph|stateDiagram|erDiagram|classDiagram)", first, re.IGNORECASE) else lines
 
     for s in body_lines:
@@ -446,10 +538,14 @@ def parse_mermaid_diagram(mermaid_code: str) -> Dict[str, Any]:
                 node_order.append(nid)
             continue
 
-        # 状態遷移やER図の `: ラベル` サフィックス対応
+        # 状態遷移やER図の `: ラベル` サフィックス対応（ノード定義の括弧内の `:` は除外する）
         trailing_label = ""
         s_work = s
-        m_colon = re.match(r"^(.+?(?:-->|-\.->|\|\|--o\{|\|\|--\|\||\}o--\|\||<\|--|\*--|o--).+?)\s*:\s*(.+)$", s_work)
+        m_colon = re.match(
+            r"^(.+?(?:-->|-\.->|\|\|--o\{|\|\|--\|\||\}o--\|\||<\|--|\*--|o--)\s*"
+            r"(?:\[\*\]|[A-Za-z0-9_.\-]+(?:\s*(?:\[[^\]]*\]|\([^)]*\)|\{[^}]*\}))?))\s*:\s*(.+)$",
+            s_work,
+        )
         if m_colon:
             s_work = m_colon.group(1).strip()
             trailing_label = _clean_mermaid_label(m_colon.group(2))
@@ -459,8 +555,9 @@ def parse_mermaid_diagram(mermaid_code: str) -> Dict[str, Any]:
             r"(\-\.\->\s*\|[^|]*\||"
             r"\-\->\s*\|[^|]*\||"
             r"==>\s*\|[^|]*\||"
-            r"\-\.\s+[^.\n]+?\s+\.\->|"
-            r"\-\-\s+[^-\n]+?\s+\-\->|"
+            r"\-\.\s+.+?\s+\.\->|"
+            r"\-\-\s+(?!\->).+?\s+\-\->|"
+            r"==\s+.+?\s+==>|"
             r"<\-\.\->|<\-\->|\-\.\->|==>|\-\-\->|\-\->|\-\-\-|"
             r"\|\|\-\-o\{|\|\|\-\-\|\||\}o\-\-\|\||<\|--|\*--|o--)"
         )
@@ -477,7 +574,7 @@ def parse_mermaid_diagram(mermaid_code: str) -> Dict[str, Any]:
                 if m_pipe:
                     lbl = _clean_mermaid_label(m_pipe.group(1))
                 else:
-                    m_mid = re.match(r"^(?:\-\-|\-\.)\s+(.+?)\s+(?:\-\->|\.\->)$", raw_arrow)
+                    m_mid = re.match(r"^(?:\-\-|\-\.|==)\s+(.+?)\s+(?:\-\->|\.\->|==>)$", raw_arrow)
                     if m_mid:
                         lbl = _clean_mermaid_label(m_mid.group(1))
                 if not lbl and trailing_label and idx + 2 >= len(parts):
@@ -505,29 +602,44 @@ def parse_mermaid_diagram(mermaid_code: str) -> Dict[str, Any]:
     }
 
 
-def layout_mermaid_diagram(parsed: Dict[str, Any]) -> Dict[str, Any]:
+def layout_mermaid_diagram(parsed: Dict[str, Any], ref_width_pt: float = 460.0) -> Dict[str, Any]:
     """
     解析済みMermaid図を (0..1000, 0..1000) の正規化座標系にレイアウトする。
-    戻り値には boxes (id, label, shape, x, y, w, h) と connectors (x1, y1, x2, y2, label, dashed, directed) を含む。
+    各ノードのラベル文字数・折り返し行数に応じてボックス幅・高さとキャンバス高さを動的に算出し、
+    文字欠けや枠外はみ出しを防止する。
+    戻り値には boxes (id, label, lines, shape, x, y, w, h) と connectors (x1, y1, x2, y2, label, dashed, directed)、
+    aspect、target_h_pt を含む。
     """
     kind = parsed.get("kind", "empty")
     if kind == "sequence":
         parts = parsed.get("participants", [])
         msgs = parsed.get("messages", [])
         if not parts:
-            return {"boxes": [], "connectors": [], "aspect": 0.45}
+            return {"boxes": [], "connectors": [], "aspect": 0.45, "target_h_pt": 180.0}
 
         p_cnt = len(parts)
         m_cnt = len(msgs)
-        margin_x = 60.0
+        margin_x = 30.0
         usable_w = 1000.0 - 2 * margin_x
-        box_w = min(180.0, max(90.0, usable_w / max(p_cnt, 1) * 0.72))
-        box_h = 95.0
-        top_y = 35.0
+        col_w = usable_w / max(p_cnt, 1)
+        box_w = min(230.0, max(105.0, col_w * 0.82))
+
+        part_lines_list: List[List[str]] = []
+        max_p_lines = 1
+        for p in parts:
+            p_lines = _wrap_mermaid_label(p["label"], max_units=14.0)
+            part_lines_list.append(p_lines)
+            max_p_lines = max(max_p_lines, len(p_lines))
+
+        target_h_pt = max(175.0, min(460.0, 85.0 + max_p_lines * 12.0 + m_cnt * 34.0))
+        box_h_pt = max(30.0, 16.0 + max_p_lines * 11.5)
+        box_h = min(160.0, max(85.0, (box_h_pt / target_h_pt) * 1000.0))
+        top_y = 30.0
 
         boxes: List[Dict[str, Any]] = []
         lifeline_x: Dict[str, float] = {}
         for i, p in enumerate(parts):
+            p_lines = part_lines_list[i]
             if p_cnt == 1:
                 cx = 500.0
             else:
@@ -536,18 +648,21 @@ def layout_mermaid_diagram(parsed: Dict[str, Any]) -> Dict[str, Any]:
             lifeline_x[p["id"]] = cx
             boxes.append({
                 "id": p["id"],
-                "label": p["label"],
+                "label": "\n".join(p_lines),
+                "lines": p_lines,
                 "shape": "participant",
                 "x": bx,
                 "y": top_y,
                 "w": box_w,
                 "h": box_h,
+                "cx": cx,
+                "cy": top_y + box_h / 2,
             })
 
         connectors: List[Dict[str, Any]] = []
         start_msg_y = top_y + box_h + 65.0
-        avail_msg_h = 940.0 - start_msg_y
-        step_y = min(130.0, avail_msg_h / max(m_cnt, 1))
+        avail_msg_h = 945.0 - start_msg_y
+        step_y = min(135.0, avail_msg_h / max(m_cnt, 1))
         bottom_y = start_msg_y + max(m_cnt - 1, 0) * step_y + 45.0
 
         # ライフライン（破線・矢印なし）
@@ -574,13 +689,13 @@ def layout_mermaid_diagram(parsed: Dict[str, Any]) -> Dict[str, Any]:
                 "directed": True,
             })
 
-        aspect = min(0.85, max(0.38, 0.22 + 0.065 * m_cnt))
-        return {"boxes": boxes, "connectors": connectors, "aspect": aspect}
+        aspect = round(target_h_pt / max(ref_width_pt, 1.0), 3)
+        return {"boxes": boxes, "connectors": connectors, "aspect": aspect, "target_h_pt": target_h_pt}
 
     nodes = parsed.get("nodes", [])
     edges = parsed.get("edges", [])
     if not nodes:
-        return {"boxes": [], "connectors": [], "aspect": 0.4}
+        return {"boxes": [], "connectors": [], "aspect": 0.4, "target_h_pt": 160.0}
 
     direction = parsed.get("direction", "TD")
     node_ids = [n["id"] for n in nodes]
@@ -611,90 +726,164 @@ def layout_mermaid_diagram(parsed: Dict[str, Any]) -> Dict[str, Any]:
             if in_deg[nxt] <= 0 and nxt not in visited:
                 queue.append(nxt)
 
-    # 1列に長すぎる場合（例: 8段以上の縦一列）は複数列へ折り返して視認性を高める
-    max_rank = max(ranks.values()) if ranks else 0
-    if max_rank >= 7 and len(nodes) >= 8:
-        wrap_cols = 4 if direction == "LR" else 5
-        for idx, nid in enumerate(node_ids):
-            ranks[nid] = idx // wrap_cols
-
-    layers: Dict[int, List[Dict[str, str]]] = {}
+    raw_layers: Dict[int, List[Dict[str, str]]] = {}
     for n in nodes:
         r = ranks.get(n["id"], 0)
-        layers.setdefault(r, []).append(n)
+        raw_layers.setdefault(r, []).append(n)
 
-    sorted_ranks = sorted(layers.keys())
-    num_layers = len(sorted_ranks)
-    max_in_layer = max(len(layers[r]) for r in sorted_ranks) if sorted_ranks else 1
+    sorted_raw_ranks = sorted(raw_layers.keys())
+
+    # LR（横方向）でも段数が5段以上ある場合や、TD（縦方向）で段数が7段以上ある場合は、
+    # 行ごとのグリッド（最大3〜4列）へ折り返して1ボックスあたりの横幅を十分に確保する
+    effective_dir = direction
+    rows_of_nodes: List[List[Dict[str, str]]] = []
+
+    if direction == "LR" and len(sorted_raw_ranks) >= 5:
+        effective_dir = "TD"
+        flat_nodes = [nd for r_k in sorted_raw_ranks for nd in raw_layers[r_k]]
+        max_per_row = 4 if len(flat_nodes) >= 8 else 3
+        for i in range(0, len(flat_nodes), max_per_row):
+            rows_of_nodes.append(flat_nodes[i : i + max_per_row])
+    elif direction == "TD" and len(sorted_raw_ranks) >= 7 and len(nodes) >= 8:
+        max_per_row = 3
+        flat_nodes = [nd for r_k in sorted_raw_ranks for nd in raw_layers[r_k]]
+        for i in range(0, len(flat_nodes), max_per_row):
+            rows_of_nodes.append(flat_nodes[i : i + max_per_row])
+    elif direction == "TD":
+        max_per_row = 3
+        for r_k in sorted_raw_ranks:
+            layer_nds = raw_layers[r_k]
+            if len(layer_nds) <= max_per_row:
+                rows_of_nodes.append(layer_nds)
+            else:
+                for i in range(0, len(layer_nds), max_per_row):
+                    rows_of_nodes.append(layer_nds[i : i + max_per_row])
+    else:
+        # direction == "LR" and len(sorted_raw_ranks) <= 4
+        for r_k in sorted_raw_ranks:
+            rows_of_nodes.append(raw_layers[r_k])
+
+    # 各ノードの折り返し行と必要サイズ（pt単位）を計算
+    node_meta: Dict[str, Dict[str, Any]] = {}
+    for n in nodes:
+        w_lines = _wrap_mermaid_label(n["label"], max_units=16.0)
+        max_u = max((_mermaid_display_units(ln) for ln in w_lines), default=4.0)
+        # 1半角ユニットあたり約4.7pt + 左右余白22pt
+        req_w_pt = max(62.0, max_u * 4.7 + 22.0)
+        # 1行あたり約11.5pt + 上下余白16pt
+        req_h_pt = max(28.0, 16.0 + len(w_lines) * 11.5)
+        node_meta[n["id"]] = {
+            "lines": w_lines,
+            "max_u": max_u,
+            "req_w_pt": req_w_pt,
+            "req_h_pt": req_h_pt,
+        }
 
     boxes = []
     box_map: Dict[str, Dict[str, Any]] = {}
-    pad_x, pad_y = 45.0, 45.0
+    pad_x, pad_y = 24.0, 28.0
     usable_w = 1000.0 - 2 * pad_x
     usable_h = 1000.0 - 2 * pad_y
 
-    if direction == "LR":
-        col_step = usable_w / max(num_layers, 1)
-        box_w = min(210.0, max(95.0, col_step * 0.68))
-        for c_i, r_key in enumerate(sorted_ranks):
-            layer_nodes = layers[r_key]
-            m_cnt = len(layer_nodes)
+    if effective_dir == "LR":
+        num_cols = len(rows_of_nodes)
+        max_in_col = max((len(col) for col in rows_of_nodes), default=1)
+        col_step = usable_w / max(num_cols, 1)
+
+        # 各行（縦方向）の最大必要高さから target_h_pt を決定
+        col_heights_pt: List[float] = []
+        for col in rows_of_nodes:
+            h_sum = sum(node_meta[nd["id"]]["req_h_pt"] for nd in col) + max(0, len(col) - 1) * 20.0
+            col_heights_pt.append(h_sum)
+        target_h_pt = max(155.0, min(460.0, max(col_heights_pt, default=120.0) + 44.0))
+
+        for c_i, col_nodes in enumerate(rows_of_nodes):
+            m_cnt = len(col_nodes)
             row_step = usable_h / max(m_cnt, 1)
-            box_h = min(150.0, max(75.0, row_step * 0.66))
             cx = pad_x + (c_i + 0.5) * col_step
-            for r_i, nd in enumerate(layer_nodes):
+            for r_i, nd in enumerate(col_nodes):
+                meta = node_meta[nd["id"]]
+                req_w_norm = (meta["req_w_pt"] / max(ref_width_pt, 1.0)) * 1000.0
+                req_h_norm = (meta["req_h_pt"] / max(target_h_pt, 1.0)) * 1000.0
+                bw = min(col_step * 0.88, max(min(210.0, col_step * 0.72), req_w_norm))
+                bh = min(row_step * 0.86, max(min(150.0, row_step * 0.65), req_h_norm))
                 cy = pad_y + (r_i + 0.5) * row_step
                 b = {
                     "id": nd["id"],
-                    "label": nd["label"],
+                    "label": "\n".join(meta["lines"]),
+                    "lines": meta["lines"],
                     "shape": nd["shape"],
-                    "x": cx - box_w / 2,
-                    "y": cy - box_h / 2,
-                    "w": box_w,
-                    "h": box_h,
+                    "x": cx - bw / 2,
+                    "y": cy - bh / 2,
+                    "w": bw,
+                    "h": bh,
                     "cx": cx,
                     "cy": cy,
+                    "rank": c_i,
                 }
                 boxes.append(b)
                 box_map[nd["id"]] = b
-        aspect = min(0.75, max(0.32, 0.18 * max_in_layer + 0.12))
     else:
-        row_step = usable_h / max(num_layers, 1)
-        box_h = min(135.0, max(65.0, row_step * 0.64))
-        for r_i, r_key in enumerate(sorted_ranks):
-            layer_nodes = layers[r_key]
-            m_cnt = len(layer_nodes)
+        num_rows = len(rows_of_nodes)
+        row_box_h_pts: List[float] = []
+        for r_nodes in rows_of_nodes:
+            r_h = max((node_meta[nd["id"]]["req_h_pt"] for nd in r_nodes), default=30.0)
+            row_box_h_pts.append(r_h)
+
+        gap_pt = 24.0 if num_rows <= 5 else 18.0
+        total_req_h_pt = sum(row_box_h_pts) + max(0, num_rows - 1) * gap_pt + 28.0
+        target_h_pt = max(165.0, min(520.0, total_req_h_pt))
+
+        # 各行のボックス高さとY座標を、各行の必要高さ（row_box_h_pts）に比例して配分する
+        row_weights = [rh + gap_pt for rh in row_box_h_pts]
+        total_weight = sum(row_weights) or 1.0
+        cur_y = pad_y
+        for r_i, r_nodes in enumerate(rows_of_nodes):
+            m_cnt = len(r_nodes)
             col_step = usable_w / max(m_cnt, 1)
-            box_w = min(240.0, max(105.0, col_step * 0.72))
-            cy = pad_y + (r_i + 0.5) * row_step
-            for c_i, nd in enumerate(layer_nodes):
+            band_h = usable_h * (row_weights[r_i] / total_weight)
+            req_h_norm = (row_box_h_pts[r_i] / max(target_h_pt, 1.0)) * 1000.0
+            bh = min(band_h * 0.82, max(min(130.0, band_h * 0.66), req_h_norm))
+            cy = cur_y + band_h / 2.0
+            cur_y += band_h
+
+            for c_i, nd in enumerate(r_nodes):
+                meta = node_meta[nd["id"]]
+                req_w_norm = (meta["req_w_pt"] / max(ref_width_pt, 1.0)) * 1000.0
+                default_w = min(225.0, col_step * 0.74)
+                bw = min(col_step * 0.88, max(default_w, req_w_norm))
                 cx = pad_x + (c_i + 0.5) * col_step
                 b = {
                     "id": nd["id"],
-                    "label": nd["label"],
+                    "label": "\n".join(meta["lines"]),
+                    "lines": meta["lines"],
                     "shape": nd["shape"],
-                    "x": cx - box_w / 2,
-                    "y": cy - box_h / 2,
-                    "w": box_w,
-                    "h": box_h,
+                    "x": cx - bw / 2,
+                    "y": cy - bh / 2,
+                    "w": bw,
+                    "h": bh,
                     "cx": cx,
                     "cy": cy,
+                    "rank": r_i,
                 }
                 boxes.append(b)
                 box_map[nd["id"]] = b
-        aspect = min(0.85, max(0.36, 0.11 * num_layers + 0.12))
 
     def _border_point(b_from: Dict[str, Any], b_to: Dict[str, Any]) -> Tuple[float, float, float, float]:
         dx = b_to["cx"] - b_from["cx"]
         dy = b_to["cy"] - b_from["cy"]
-        if abs(dx) > abs(dy) * 1.15:
-            if dx >= 0:
-                return (b_from["x"] + b_from["w"], b_from["cy"], b_to["x"], b_to["cy"])
-            return (b_from["x"], b_from["cy"], b_to["x"] + b_to["w"], b_to["cy"])
-        else:
-            if dy >= 0:
-                return (b_from["cx"], b_from["y"] + b_from["h"], b_to["cx"], b_to["y"])
-            return (b_from["cx"], b_from["y"], b_to["cx"], b_to["y"] + b_to["h"])
+        # 上下の別段（行）にあるノード間は、常に上段の下端・下段の上端で接続して他ボックスとの交差を防ぐ
+        if b_to["y"] >= b_from["y"] + b_from["h"] - 8.0:
+            off_from = max(-b_from["w"] * 0.22, min(b_from["w"] * 0.22, dx * 0.15))
+            off_to = max(-b_to["w"] * 0.22, min(b_to["w"] * 0.22, -dx * 0.15))
+            return (b_from["cx"] + off_from, b_from["y"] + b_from["h"], b_to["cx"] + off_to, b_to["y"])
+        if b_from["y"] >= b_to["y"] + b_to["h"] - 8.0:
+            off_from = max(-b_from["w"] * 0.22, min(b_from["w"] * 0.22, dx * 0.15))
+            off_to = max(-b_to["w"] * 0.22, min(b_to["w"] * 0.22, -dx * 0.15))
+            return (b_from["cx"] + off_from, b_from["y"], b_to["cx"] + off_to, b_to["y"] + b_to["h"])
+        if dx >= 0:
+            return (b_from["x"] + b_from["w"], b_from["cy"], b_to["x"], b_to["cy"])
+        return (b_from["x"], b_from["cy"], b_to["x"] + b_to["w"], b_to["cy"])
 
     connectors = []
     for e in edges:
@@ -711,7 +900,8 @@ def layout_mermaid_diagram(parsed: Dict[str, Any]) -> Dict[str, Any]:
             "directed": bool(e.get("directed", True)),
         })
 
-    return {"boxes": boxes, "connectors": connectors, "aspect": aspect}
+    aspect = round(target_h_pt / max(ref_width_pt, 1.0), 3)
+    return {"boxes": boxes, "connectors": connectors, "aspect": aspect, "target_h_pt": target_h_pt}
 
 
 def _add_mermaid_diagram_docx(doc: Any, mermaid_code: str, diagram_idx: int = 1) -> bool:
@@ -724,16 +914,17 @@ def _add_mermaid_diagram_docx(doc: Any, mermaid_code: str, diagram_idx: int = 1)
     from docx.oxml import parse_xml
     from docx.shared import Pt
 
+    canvas_w_pt = 460.0
     parsed = parse_mermaid_diagram(mermaid_code)
-    layout = layout_mermaid_diagram(parsed)
+    layout = layout_mermaid_diagram(parsed, ref_width_pt=canvas_w_pt)
     boxes = layout.get("boxes", [])
     connectors = layout.get("connectors", [])
     if not boxes:
         return False
 
-    canvas_w_pt = 450.0
-    canvas_h_pt = round(max(150.0, min(380.0, canvas_w_pt * float(layout.get("aspect", 0.48)))), 1)
-    coord_w = 4500
+    target_h = float(layout.get("target_h_pt", canvas_w_pt * float(layout.get("aspect", 0.52))))
+    canvas_h_pt = round(max(160.0, min(520.0, target_h)), 1)
+    coord_w = int(round(canvas_w_pt * 10))
     coord_h = int(round(canvas_h_pt * 10))
 
     vml_parts: List[str] = [
@@ -764,21 +955,31 @@ def _add_mermaid_diagram_docx(doc: Any, mermaid_code: str, diagram_idx: int = 1)
         )
         lbl = conn.get("label", "").strip()
         if lbl:
+            lbl_lines = _wrap_mermaid_label(lbl, max_units=16.0)
+            max_lu = max((_mermaid_display_units(ln) for ln in lbl_lines), default=4.0)
             mx = int((x1 + x2) / 2)
             my = int((y1 + y2) / 2)
-            lw = min(1400, max(520, len(lbl) * 110))
-            lh = 220
+            lw = min(1800, max(500, int(round(max_lu * 42 + 120))))
+            lh = max(170, len(lbl_lines) * 95 + 50)
             lx = max(20, min(coord_w - lw - 20, mx - lw // 2))
             ly = max(10, min(coord_h - lh - 10, my - lh - 10 if abs(y1 - y2) < 40 else my - lh // 2))
+            elbl_p_list: List[str] = []
+            for eln in lbl_lines:
+                elbl_p_list.append(
+                    f'<w:p><w:pPr><w:snapToGrid w:val="0"/>'
+                    f'<w:ind w:left="0" w:right="0" w:firstLine="0" w:hanging="0"/>'
+                    f'<w:spacing w:before="0" w:after="0" w:line="165" w:lineRule="exact"/>'
+                    f'<w:jc w:val="center"/></w:pPr>'
+                    f'<w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="ＭＳ ゴシック"/>'
+                    f'<w:color w:val="2C5282"/><w:sz w:val="14"/><w:szCs w:val="14"/></w:rPr>'
+                    f'<w:t>{escape(eln)}</w:t></w:r></w:p>'
+                )
             vml_parts.append(
                 f'<v:rect id="m_elbl_{diagram_idx}_{c_i}" '
                 f'style="position:absolute;left:{lx};top:{ly};width:{lw};height:{lh}" '
                 f'fillcolor="#FFFFFF" strokecolor="#CBD5E0" strokeweight="0.5pt">'
-                f'<v:textbox inset="1pt,1pt,1pt,1pt"><w:txbxContent>'
-                f'<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0"/></w:pPr>'
-                f'<w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="ＭＳ ゴシック"/>'
-                f'<w:color w:val="2C5282"/><w:sz w:val="15"/></w:rPr>'
-                f'<w:t>{escape(lbl)}</w:t></w:r></w:p>'
+                f'<v:textbox inset="1.5pt,1.5pt,1.5pt,1.5pt"><w:txbxContent>'
+                f'{"".join(elbl_p_list)}'
                 f'</w:txbxContent></v:textbox></v:rect>'
             )
 
@@ -786,37 +987,56 @@ def _add_mermaid_diagram_docx(doc: Any, mermaid_code: str, diagram_idx: int = 1)
     for b_i, b in enumerate(boxes, start=1):
         bx = int(round(b["x"] / 1000.0 * coord_w))
         by = int(round(b["y"] / 1000.0 * coord_h))
-        bw = max(360, int(round(b["w"] / 1000.0 * coord_w)))
-        bh = max(220, int(round(b["h"] / 1000.0 * coord_h)))
+        bw = max(520, int(round(b["w"] / 1000.0 * coord_w)))
+        bh = max(260, int(round(b["h"] / 1000.0 * coord_h)))
         shp = b.get("shape", "rect")
 
         if shp == "participant":
             fill_hex, stroke_hex, txt_hex = "#1B365D", "#1B365D", "FFFFFF"
             tag = "v:roundrect"
-            extra = ' arcsize="8000f"'
+            extra = ' arcsize="5000f"'
         elif shp == "diamond":
             fill_hex, stroke_hex, txt_hex = "#FFF4E5", "#D97706", "1B365D"
             tag = "v:roundrect"
-            extra = ' arcsize="18000f"'
+            extra = ' arcsize="9000f"'
         elif shp == "cylinder":
             fill_hex, stroke_hex, txt_hex = "#E6F4EA", "#2E7D32", "1B365D"
             tag = "v:roundrect"
-            extra = ' arcsize="12000f"'
+            extra = ' arcsize="7000f"'
         elif shp == "oval":
             fill_hex, stroke_hex, txt_hex = "#EBF3FA", "#2C5282", "1B365D"
-            tag = "v:oval"
-            extra = ""
+            tag = "v:roundrect"
+            extra = ' arcsize="22000f"'
         else:
             fill_hex, stroke_hex, txt_hex = "#EBF3FA", "#2C5282", "1B365D"
             tag = "v:roundrect"
-            extra = ' arcsize="10000f"'
+            extra = ' arcsize="5500f"'
+
+        node_lines = b.get("lines") or _wrap_mermaid_label(str(b.get("label", "")), max_units=16.0)
+        max_nu = max((_mermaid_display_units(ln) for ln in node_lines), default=4.0)
+        # 3行以上または1行が長い場合は 7.5pt (sz=15)、通常は 8.0pt (sz=16)
+        if len(node_lines) >= 3 or max_nu > 17.5:
+            sz_val = "15"
+            line_twips = 175
+            line_pt = 8.75
+        else:
+            sz_val = "16"
+            line_twips = 190
+            line_pt = 9.5
+
+        bh_pt = bh / 10.0
+        txt_block_pt = len(node_lines) * line_pt
+        top_inset_pt = round(max(1.5, (bh_pt - txt_block_pt) / 2.0 - 0.5), 1)
 
         p_xml_list: List[str] = []
-        for ln_txt in str(b.get("label", "")).split("\n"):
+        for ln_txt in node_lines:
             p_xml_list.append(
-                f'<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0"/></w:pPr>'
+                f'<w:p><w:pPr><w:snapToGrid w:val="0"/>'
+                f'<w:ind w:left="0" w:right="0" w:firstLine="0" w:hanging="0"/>'
+                f'<w:spacing w:before="0" w:after="0" w:line="{line_twips}" w:lineRule="exact"/>'
+                f'<w:jc w:val="center"/></w:pPr>'
                 f'<w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="ＭＳ ゴシック"/>'
-                f'<w:b/><w:color w:val="{txt_hex}"/><w:sz w:val="17"/></w:rPr>'
+                f'<w:b/><w:color w:val="{txt_hex}"/><w:sz w:val="{sz_val}"/><w:szCs w:val="{sz_val}"/></w:rPr>'
                 f'<w:t>{escape(ln_txt.strip())}</w:t></w:r></w:p>'
             )
 
@@ -824,7 +1044,7 @@ def _add_mermaid_diagram_docx(doc: Any, mermaid_code: str, diagram_idx: int = 1)
             f'<{tag} id="m_node_{diagram_idx}_{b_i}" '
             f'style="position:absolute;left:{bx};top:{by};width:{bw};height:{bh}"{extra} '
             f'fillcolor="{fill_hex}" strokecolor="{stroke_hex}" strokeweight="1.2pt">'
-            f'<v:textbox inset="2pt,2pt,2pt,2pt"><w:txbxContent>'
+            f'<v:textbox inset="2pt,{top_inset_pt}pt,2pt,1.5pt"><w:txbxContent>'
             f'{"".join(p_xml_list)}'
             f'</w:txbxContent></v:textbox></{tag}>'
         )
@@ -1119,6 +1339,22 @@ def import_docx_to_md(docx_path: Path) -> str:
             p = para_map[child]
             text = p.text.strip()
             if not text:
+                # VML図形 (<w:pict><v:group>...<w:txbxContent>) 内のテキストを抽出する
+                w_ns = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+                txbx_list = p._element.findall(f".//{w_ns}txbxContent")
+                if txbx_list:
+                    box_texts: List[str] = []
+                    for txbx in txbx_list:
+                        t_parts = [
+                            "".join(t_el.text or "" for t_el in wp.findall(f".//{w_ns}t")).strip()
+                            for wp in txbx.findall(f"./{w_ns}p")
+                        ]
+                        joined = " ".join(tp for tp in t_parts if tp)
+                        if joined:
+                            box_texts.append(joined)
+                    if box_texts:
+                        lines.append(" / ".join(box_texts))
+                        lines.append("")
                 continue
             style_name = (p.style.name if p.style else "Normal") or "Normal"
             style_low = style_name.lower()
@@ -1380,10 +1616,12 @@ def _add_mermaid_diagram_pptx(slide: Any, mermaid_code: str,
 
         lbl = conn.get("label", "").strip()
         if lbl:
+            lbl_lines = _wrap_mermaid_label(lbl, max_units=16.0)
+            max_lu = max((_mermaid_display_units(ln) for ln in lbl_lines), default=4.0)
             mx_in = left_in + ((conn["x1"] + conn["x2"]) / 2000.0) * width_in
             my_in = top_in + ((conn["y1"] + conn["y2"]) / 2000.0) * height_in
-            lw_in = min(2.6, max(0.95, len(lbl) * 0.14 + 0.3))
-            lh_in = 0.28
+            lw_in = min(3.2, max(0.95, max_lu * 0.085 + 0.3))
+            lh_in = max(0.26, len(lbl_lines) * 0.18 + 0.08)
             tb = slide.shapes.add_textbox(
                 Inches(mx_in - lw_in / 2),
                 Inches(my_in - lh_in - 0.03 if abs(conn["y1"] - conn["y2"]) < 25 else my_in - lh_in / 2),
@@ -1398,20 +1636,21 @@ def _add_mermaid_diagram_pptx(slide: Any, mermaid_code: str,
             tf.margin_right = Pt(2)
             tf.margin_top = Pt(1)
             tf.margin_bottom = Pt(1)
-            p = tf.paragraphs[0]
-            p.alignment = PP_ALIGN.CENTER
-            r = p.add_run()
-            r.text = lbl
-            r.font.name = FONT_JA_PRESENTATION
-            r.font.size = Pt(9.5)
-            r.font.color.rgb = RGBColor(*COLOR_SECONDARY)
+            for l_i, eln in enumerate(lbl_lines):
+                p = tf.paragraphs[0] if l_i == 0 else tf.add_paragraph()
+                p.alignment = PP_ALIGN.CENTER
+                r = p.add_run()
+                r.text = eln
+                r.font.name = FONT_JA_PRESENTATION
+                r.font.size = Pt(9.0)
+                r.font.color.rgb = RGBColor(*COLOR_SECONDARY)
 
     # 2. ノード（編集可能なPowerPoint図形）を描画
     for b in boxes:
         bx = Inches(left_in + (b["x"] / 1000.0) * width_in)
         by = Inches(top_in + (b["y"] / 1000.0) * height_in)
-        bw = Inches(max(0.85, (b["w"] / 1000.0) * width_in))
-        bh = Inches(max(0.38, (b["h"] / 1000.0) * height_in))
+        bw = Inches(max(0.95, (b["w"] / 1000.0) * width_in))
+        bh = Inches(max(0.42, (b["h"] / 1000.0) * height_in))
         shp_kind = b.get("shape", "rect")
 
         if shp_kind == "diamond":
@@ -1440,18 +1679,20 @@ def _add_mermaid_diagram_pptx(slide: Any, mermaid_code: str,
         tf.clear()
         tf.word_wrap = True
         tf.vertical_anchor = MSO_ANCHOR.MIDDLE
-        tf.margin_left = Pt(4)
-        tf.margin_right = Pt(4)
+        tf.margin_left = Pt(3)
+        tf.margin_right = Pt(3)
         tf.margin_top = Pt(2)
         tf.margin_bottom = Pt(2)
 
-        for l_i, ln_txt in enumerate(str(b.get("label", "")).split("\n")):
+        node_lines = b.get("lines") or _wrap_mermaid_label(str(b.get("label", "")), max_units=16.0)
+        f_pt = 9.0 if (len(node_lines) >= 3 or len(boxes) > 10) else 10.0
+        for l_i, ln_txt in enumerate(node_lines):
             p = tf.paragraphs[0] if l_i == 0 else tf.add_paragraph()
             p.alignment = PP_ALIGN.CENTER
             r = p.add_run()
             r.text = ln_txt.strip()
             r.font.name = FONT_JA_PRESENTATION
-            r.font.size = Pt(10.5)
+            r.font.size = Pt(f_pt)
             r.font.bold = True
             r.font.color.rgb = RGBColor(*txt_rgb)
 
@@ -2177,13 +2418,14 @@ def _create_mermaid_pdf_drawing(mermaid_code: str, width_pt: float,
     from reportlab.lib import colors
 
     parsed = parse_mermaid_diagram(mermaid_code)
-    layout = layout_mermaid_diagram(parsed)
+    layout = layout_mermaid_diagram(parsed, ref_width_pt=width_pt)
     boxes = layout.get("boxes", [])
     connectors = layout.get("connectors", [])
     if not boxes:
         return None
 
-    height_pt = max(130.0, min(340.0, width_pt * float(layout.get("aspect", 0.48))))
+    target_h = float(layout.get("target_h_pt", width_pt * float(layout.get("aspect", 0.52))))
+    height_pt = max(145.0, min(480.0, target_h))
     d = Drawing(width_pt, height_pt)
     d.add(Rect(0, 0, width_pt, height_pt,
                fillColor=colors.HexColor("#FAFCFF"),
@@ -2212,13 +2454,13 @@ def _create_mermaid_pdf_drawing(mermaid_code: str, width_pt: float,
         if lbl:
             mx = (x1 + x2) / 2.0
             my = (y1 + y2) / 2.0 + (5.0 if abs(y1 - y2) < 10 else 0.0)
-            d.add(String(mx, my, lbl[:24], fontName=font_reg, fontSize=7.5,
+            d.add(String(mx, my, lbl, fontName=font_reg, fontSize=7.2,
                          fillColor=colors.HexColor("#2C5282"), textAnchor="middle"))
 
     for b in boxes:
         bx = (b["x"] / 1000.0) * width_pt
-        bw = max(42.0, (b["w"] / 1000.0) * width_pt)
-        bh = max(20.0, (b["h"] / 1000.0) * height_pt)
+        bw = max(48.0, (b["w"] / 1000.0) * width_pt)
+        bh = max(24.0, (b["h"] / 1000.0) * height_pt)
         by = height_pt - ((b["y"] / 1000.0) * height_pt) - bh
         shp = b.get("shape", "rect")
         if shp == "participant":
@@ -2231,14 +2473,16 @@ def _create_mermaid_pdf_drawing(mermaid_code: str, width_pt: float,
             f_col, s_col, t_col = colors.HexColor("#EBF3FA"), colors.HexColor("#2C5282"), colors.HexColor("#1B365D")
 
         d.add(Rect(bx, by, bw, bh, rx=4, ry=4, fillColor=f_col, strokeColor=s_col, strokeWidth=1.1))
-        lines_lbl = [ln.strip() for ln in str(b.get("label", "")).split("\n") if ln.strip()]
+        lines_lbl = b.get("lines") or _wrap_mermaid_label(str(b.get("label", "")), max_units=16.0)
+        lines_lbl = [ln.strip() for ln in lines_lbl if ln.strip()]
         if not lines_lbl:
             lines_lbl = [b["id"]]
-        line_h = 9.5
-        start_ty = by + bh / 2.0 + ((len(lines_lbl) - 1) * line_h) / 2.0 - 3.0
-        for l_i, l_txt in enumerate(lines_lbl[:3]):
-            d.add(String(bx + bw / 2.0, start_ty - l_i * line_h, l_txt[:26],
-                         fontName=font_bold, fontSize=8.0, fillColor=t_col, textAnchor="middle"))
+        f_sz = 7.2 if len(lines_lbl) >= 3 else 7.8
+        line_h = 8.8 if len(lines_lbl) >= 3 else 9.5
+        start_ty = by + bh / 2.0 + ((len(lines_lbl) - 1) * line_h) / 2.0 - 2.8
+        for l_i, l_txt in enumerate(lines_lbl[:4]):
+            d.add(String(bx + bw / 2.0, start_ty - l_i * line_h, l_txt,
+                         fontName=font_bold, fontSize=f_sz, fillColor=t_col, textAnchor="middle"))
 
     return d
 
