@@ -6,9 +6,10 @@
 | :--- | :--- | :--- |
 | `dada_check.py` | 開発文書（SW105 / SWP6 / SW205）とソースコード | **常時**（全Phaseの承認ゲート前） |
 | `agent_def_check.py` | エージェント定義の成果物（`SKILL.md`・参照パス・ツール・評価記録） | **開発対象がエージェント定義の場合**（Phase 3〜4） |
-| `office_io.py` | Office文書・PDF（`.docx` / `.xlsx` / `.pptx` / `.pdf`）と `.md` の相互変換・差分反映 | **Product Ownerが求めたとき、既存Office資産から開始するとき、または単体でOffice文書を編集するとき** |
+| `asdoq_lint.py` + `asdoq_dictionary.json` | ASDoQ拡張違反例辞書86件・日本語形態素解析・構造クロスリファレンス抽出・図表ルール検査・`gemini-decision-1`（任意）連携 | **常時**（開発文書のレビューStep 1、および単体でのASDoQ文書レビュー） |
 | `style_check.py` | 日本語推敲・AI-Slop（AIっぽい不自然な表現）検出・推敲前後の意味保持検証 | **常時**（開発文書の執筆3ステップ・レビュー3ステップ、および単体での文章推敲） |
-| `export_skillset.py` | 3種類のスキルセット（`dada-core` / `office-suite` / `jp-humanizer`）の独立切り出し | **特定のスキルセットだけを別リポジトリ・別プロジェクトへ切り出すとき** |
+| `office_io.py` | Office文書・PDF（`.docx` / `.xlsx` / `.pptx` / `.pdf`）と `.md` の相互変換・差分反映 | **Product Ownerが求めたとき、既存Office資産から開始するとき、または単体でOffice文書を編集するとき** |
+| `export_skillset.py` | 4種類のスキルセット（`dada-core` / `office-suite` / `jp-humanizer` / `asdoq-reviewer`）の独立切り出し | **特定のスキルセットだけを別リポジトリ・別プロジェクトへ切り出すとき** |
 
 ## なぜツールが必要か
 
@@ -164,6 +165,28 @@ Pythonが利用できない環境では、各スキルに記述された**手動
 > [!WARNING]
 > **自律型では、機械チェックの実行が自律遷移の必須条件です**（`.agents/AGENTS.md` 第10.3節）。Pythonが使えず終了コードを取得できない場合は、自律遷移の条件を満たせないため、**承認ゲート型として人間の承認を求めてください**。
 
+## asdoq_lint.py（ASDoQハイブリッド機械検査・構造クロスリファレンス抽出・`gemini-decision-1` 連携ツール）
+
+ASDoQ文書品質モデル（6大品質特性）に基づき、拡張違反例辞書（8カテゴリ・86件、`tools/asdoq_dictionary.json`）による機械検査、日本語形態素解析（`janome` 導入時は品詞解析、未導入時は標準ライブラリに自動フォールバック）、図表ルール検査（Mermaid 10ノード上限・`[接続N]` ペア照合・図直下／表直上キャプション）、および構造クロスリファレンス4項目（目的・スコープ要素、用語表記ゆれ、数値・単位一覧、見出し階層・図表位置）の自動抽出を行い、全文の50%以下の「疑義スライス」に圧縮します。
+
+さらに、`.env.local` 等に `GEMINI_API_KEY` を設定して `--decision1 on` を明示指定した場合は、Google の判定・分類特化モデル `gemini-decision-1`（Gemini Decisions API）と連携し、出力トークン 0 で文脈を踏まえた誤検知ノイズの除去を行います（既定値は `--decision1 off` のローカルルールベース選別で、外部通信なしで動作します）。
+
+```bash
+# 拡張違反例辞書のスキーマ・正規表現検証
+python tools/asdoq_lint.py --validate-dict
+
+# 対象文書の検査と構造クロスリファレンス抽出（既定 --decision1 off、プロファイル: sw105 / swp6 / sw205 / general）
+python tools/asdoq_lint.py --input docs/artifacts/SW105_ソフトウェア要求仕様書.md --profile sw105
+
+# Google gemini-decision-1 連携を有効にして検査する場合（要 GEMINI_API_KEY）
+python tools/asdoq_lint.py --input docs/artifacts/SW105_ソフトウェア要求仕様書.md --profile sw105 --decision1 on
+
+# 企業カスタム辞書を追加指定して検査する場合
+python tools/asdoq_lint.py --input docs/artifacts/SW105_ソフトウェア要求仕様書.md --profile sw105 --custom-dict my_custom_dict.json
+```
+
+- 終了コード: `0` = High指摘なし / `1` = High指摘あり / `2` = 実行エラー（ファイル不在・引数不正・`--decision1 on` 時のAPIキー未設定等）
+
 ## style_check.py（日本語推敲・AI-Slop検出・意味保持検証ツール）
 
 生成AIが書いた日本語文書に混入しやすい「AIっぽい不自然な表現（AI-Slop）」や「長文・冗長表現」を行番号付きで機械検出します。さらに、スキル `.agents/skills/JP-Humanizer/SKILL.md` による推敲前後で**元の意味（ID・数値・単位・表構造・見出し・否定極性）が保持されているか**を決定論的に検証します（Python標準ライブラリのみで動作、LLMトークン消費ゼロ）。
@@ -196,9 +219,9 @@ python tools/office_io.py patch --base <既存Office文書> --input <改訂.md> 
 python tools/office_io.py batch-export --artifacts-dir docs/artifacts --out-dir docs/artifacts/office --summary
 ```
 
-## export_skillset.py（3種類のスキルセットの独立切り出しツール）
+## export_skillset.py（4種類のスキルセットの独立切り出しツール）
 
-本リポジトリに含まれる3種類のスキルセット（`dada-core` / `office-suite` / `jp-humanizer`）から、必要なスキル・ツール・知識・テンプレート一式を別ディレクトリへ自動抽出し、単体リポジトリとして使えるようにします。
+本リポジトリに含まれる4種類のスキルセット（`dada-core` / `office-suite` / `jp-humanizer` / `asdoq-reviewer`）から、必要なスキル・ツール・知識・テンプレート一式を別ディレクトリへ自動抽出し、単体リポジトリとして使えるようにします。
 
 ```bash
 # スキルセット一覧と構成ファイルの確認
@@ -209,4 +232,7 @@ python tools/export_skillset.py export --set office-suite --out ../DADA-Office-S
 
 # JP-Humanizer（自然な日本語への推敲スキルセット）だけを切り出す
 python tools/export_skillset.py export --set jp-humanizer --out ../JP-Humanizer-Skill --summary
+
+# ASDoQハイブリッド文書レビューエージェントだけを切り出す
+python tools/export_skillset.py export --set asdoq-reviewer --out ../my-reviewer --summary
 ```

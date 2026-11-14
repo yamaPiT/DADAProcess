@@ -7,6 +7,8 @@ author: Product Owner
 description: DADA (Document-and-Agent-Driven Agile) プロセスにおいて、AIエージェントが開発ドキュメント（SW105、SWP6、SW205）を作成・更新するための標準ルールブック。
 ---
 
+<!-- UNIT-006 / REQ-006 -->
+
 # DADAプロセス ドキュメント作成ガイドライン
 
 ## 1. 目的と適用範囲
@@ -112,6 +114,7 @@ DADAプロセスで作成する開発成果文書は以下の3種類を基本と
    - 書き出し後は必ず① `python tools/style_check.py snapshot` で推敲前の意味シグネチャを保存する。次に②スキル `.agents/skills/JP-Humanizer/SKILL.md` と `python tools/style_check.py lint` で自然な日本語へ更新する。最後に③ `python tools/style_check.py verify` で元の意味・ID・数値・否定極性が保持されていることを確認する。
 2. **機械的検証の委譲（作成者・レビュアースキル共通）**:
    - ID対応の網羅性照合や曖昧語・指示語の走査、表の空欄検出、未実装ユニットの検出は推論で行わない。必ずスキル `dada-check`（`python tools/dada_check.py all`、Phase 4では加えて `report`、エージェント定義では加えて `python tools/agent_def_check.py`）に委譲する。
+   - さらにレビュー開始時（および執筆後のセルフチェック）には `python tools/asdoq_lint.py --input <対象.md> --profile <sw105|swp6|sw205|general>` を実行し、拡張違反例辞書86件・形態素解析・図表ルール（Mermaid 10ノード上限・`[接続N]` ペア・図直下／表直上キャプション）・構造クロスリファレンス4項目を決定論的に抽出する。
 3. **内容と読みやすさの自己校正（レビュアースキル）**:
-   - 通常時は `docs/guidelines/asdoq_checklist.md`（軽量版）、Product Ownerから厳密校正の指示があった場合は `docs/guidelines/asdoq_model_markdown.md`（フル版）をロードする。
-   - 機械が形式を保証したうえで、レビュアーは**内容の妥当性（要求の適否・テストの十分性・設計の適切さ・用語の一貫性・論理矛盾）**と**文章の読みやすさ（`JP-Humanizer` 8観点＋`style_check.py lint`）**を厳しく評価し、指摘を `docs/artifacts/REV101_*.md` に記録する。
+   - 通常時は `docs/guidelines/asdoq_checklist.md`（軽量版）およびスキル `.agents/skills/asdoq-reviewer/SKILL.md`（6特性別専門定義 `C1`〜`C6`）をロードし、Product Ownerから厳密校正の指示があった場合は `docs/guidelines/asdoq_model_markdown.md`（フル版）をロードする。
+   - 機械が形式を保証したうえで、レビュアーは**内容の妥当性（要求の適否・テストの十分性・設計の適切さ・用語の一貫性・論理矛盾）**と**文章の読みやすさ（`JP-Humanizer` 8観点＋`style_check.py lint`）**を厳しく評価し、指摘を `docs/artifacts/REV101_*.md` に `❌ Before` / `✅ After` と `[ASDoQ:特性-副特性]` 付きで記録する。

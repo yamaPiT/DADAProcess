@@ -1,5 +1,7 @@
 # DADA Process Workspace Rules (特別法)
 
+<!-- UNIT-006 / REQ-006 -->
+
 本ファイルは、このワークスペースにおけるAIエージェントの最上位ルール（ワークスペース憲法）です。
 旧構成で使用していたルールファイル（rules/dada_workspace_rules.md）は、本ファイル（.agents/AGENTS.md）へ集約されました。現在は存在しません。
 
@@ -23,6 +25,7 @@ DADAプロセスは、IPAのESPR（ESPR Ver.2.0：【改訂版】 組込みソ�
 - **単体スキル（スタンドアロン）の直接利用**: ソフトウェア開発工程を伴わない以下の単体依頼や、チャットでの質問応答・雑談は、DADAプロセス（Phase 0〜5）を起動せず直接処理してよい。
   1. **「Office文書扱い」のみの依頼**: 既存のPowerPoint / Word / Excel / PDFを渡して対話しながら編集・変換する依頼 → スキル `.agents/skills/office-document/SKILL.md` と `tools/office_io.py` を単体で使用する。
   2. **「人間っぽく書き直す」のみの依頼**: 他のAIが作成した `.md` ファイル等を自然で人間らしい日本語へ推敲する依頼 → スキル `.agents/skills/JP-Humanizer/SKILL.md` と `tools/style_check.py` を単体で使用する。
+  3. **「ASDoQに基づく文書レビュー・品質改善」のみの依頼**: 既存の技術文書・論理文書・開発文書（`.md` や Office文書・PDF）をASDoQ文書品質モデル（6大品質特性）と拡張違反例辞書・構造クロスリファレンス解析（およびAPIキー設定時・明示指定 `--decision1 on` 時のGoogle `gemini-decision-1` 連携）に基づいてレビューまたは修正する依頼 → スキル `.agents/skills/asdoq-reviewer/SKILL.md` と `tools/asdoq_lint.py` を単体で使用する。
 - **DADAプロセス起動時に3つの判定を行う**: Phase 0では「①開発対象（第9節）②実行モード（第10節）③変更スケール（第8節）」を判定し、結果を宣言すること。いずれも判定できない場合は既定値（従来型プログラム／承認ゲート型／Major）を採用し、Product Ownerに確認すること。
 
 ## 3. DADAプロセスの4原則（厳守事項）
@@ -112,9 +115,9 @@ ASDoQ品質モデルは、場面に応じて以下の3ファイルを使い分�
   - **(Step 1)**: 今まで通りに `.md` ファイルに文書を書き出し、`python tools/style_check.py snapshot --input <対象.md> --summary` で推敲前の意味シグネチャを保存する。
   - **(Step 2)**: スキル `JP-Humanizer` と `python tools/style_check.py lint --input <対象.md>` を適用し、自然な書きぶりに文書を更新する。
   - **(Step 3)**: `python tools/style_check.py verify --input <対象.md>` と自己点検により、推敲後の文書が元の意味（ID・数値・条件・否定極性）を保持していることを確認する。保持していない場合はそこを書き直す。
-- **レビュー時（レビュアースキル）**: `docs/guidelines/asdoq_checklist.md`（軽量チェックリスト）をロードし、冒頭の「文書別の重点特性ガイド」に従って検証すること。さらにレビュー時は以下の**3ステップ**で動作する。
-  - **(Step 1)**: 今まで通りに機械チェック（`dada_check.py`）と内容の妥当性をレビューする。
-  - **(Step 2)**: 読みやすくなっているか否かの評価（`JP-Humanizer` スキルの8観点＋`style_check.py lint`）も厳しく行い、問題があればレビュー記録表（`REV101_*.md`）に **【ASDoQ: 理解容易性 / 可読性 / 規範適合性】** として記述する。
+- **レビュー時（レビュアースキル）**: `docs/guidelines/asdoq_checklist.md`（軽量チェックリスト）およびスキル `.agents/skills/asdoq-reviewer/SKILL.md`（6特性別専門定義 `.agents/skills/asdoq-reviewer/references/C1_purpose_reviewer.md`〜`C6_conformance_reviewer.md`）をロードし、冒頭の「文書別の重点特性ガイド」に従って反証駆動で検証すること。さらにレビュー時は以下の**3ステップ**で動作する。
+  - **(Step 1)**: 機械チェック（`dada_check.py` および `python tools/asdoq_lint.py --input <対象.md> --profile <sw105|swp6|sw205|general>`）を実行し、構造クロスリファレンス表（用語・数値・見出し・図表位置、Mermaid 10ノード上限・`[接続N]` ペア照合を含む）と違反候補スライスを取得したうえで内容の妥当性を反証駆動でレビューする。`--decision1` の既定は `off` であり、APIキー設定時に「単発 / Phase 1〜4 自己校正 / Phase 5」で `on` を使う場合は運用ポリシーに従う。
+  - **(Step 2)**: 読みやすくなっているか否かの評価（`JP-Humanizer` スキルの8観点＋`style_check.py lint`）も厳しく行い、問題があればレビュー記録表（`REV101_*.md`）に `❌ Before` / `✅ After` と **`[ASDoQ:特性-副特性]`** 等を記述する。
   - **(Step 3)**: 今まで通りに、文書作成のジェネレータに差し戻す。
 - **厳密校正時**: Product Ownerから「ASDoQ文書品質モデルに基づき厳密にレビューして」等の指示があった場合のみ、`docs/guidelines/asdoq_model_markdown.md`（フル版：例文・違反例付き）をフルロードすること。
 - **スキル配下への複製禁止**: 上記ファイルは `docs/guidelines/` が単一の情報源である。レビュアースキル（`requirements-reviewer` / `test-reviewer` / `architecture-reviewer` / `code-reviewer`）の `references/` にコピーしない。

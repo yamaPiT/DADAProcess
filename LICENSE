@@ -24,38 +24,62 @@ SOFTWARE.
 Third-Party Notices / 収録・改変している第三者著作物の著作権表示およびライセンス条項
 ==============================================================================
 
-DADAプロセス（DADAProcess）全体は上記の MIT License の下で提供され、誰でも無償かつ自由に利用・複製・改変・再配布することができます。
-なお、本リポジトリが収録または翻案・改変して同梱している以下の第三者著作物については、それぞれの原著作者の著作権表示およびライセンス条項（いずれも無償での自由な利用・複製・改変・再配布を認めるオープンなライセンス）が適用されます。再配布や派生著作物の作成にあたっては、以下の著作権表示およびライセンス条項を保持してください。
+DADAプロセス（DADAProcess）全体（ワークスペースルール・スキル定義・テンプレート・検証スクリプト一式）は上記の MIT License の下で提供され、商用・非商用を問わず、誰でも無償かつ自由に利用・複製・改変・再配布することができます。
+なお、本リポジトリが収録または翻案・改変して同梱している以下の第三者著作物については、それぞれの原著作者の著作権表示およびライセンス条項（いずれも無償での自由な利用・複製・改変・再配布を認めるオープンなライセンス）が適用されます。本リポジトリ全体、または `tools/export_skillset.py` 等で切り出した単体スキルセットを再配布・派生作成する際は、本ファイル（`LICENSE`）および以下の著作権表示・ライセンス条項を保持してください。
 
 ------------------------------------------------------------------------------
-1. ASDoQ システム開発文書品質モデル関連文書
+1. ASDoQ システム開発文書品質モデル関連文書および派生定義
 ------------------------------------------------------------------------------
 対象ファイル:
 - docs/guidelines/asdoq_model_markdown.md
 - docs/guidelines/asdoq_checklist.md
 - docs/guidelines/asdoq_writing_rules.md
+- tools/asdoq_dictionary.json
+- .agents/skills/asdoq-reviewer/（SKILL.md および references/C1_purpose_reviewer.md〜C6_conformance_reviewer.md）
 
 [著作権表示およびライセンス条項]
 - 原著作物: 『システム開発文書品質モデル Ver. 2.0a』
 - 著作権者: © システム開発文書品質研究会（ASDoQ：Association of System Documentation Quality）
-- ライセンス: ASDoQドキュメントライセンス (ASDoQ Document License: ADL)
+- ライセンス: ASDoQドキュメントライセンス (ASDoQ Document License: ADL 1.1)
   - 研究会規則・著作物取扱規則: https://asdoq.jp/rule.html
   - ライセンス条項本文 (ADL 1.1): https://asdoq.jp/licence/ADL-1.1.pdf
 
 [利用条件および改変（派生著作物）の明示]
-上記対象ファイルは、システム開発文書品質研究会（ASDoQ）が定める「システム開発文書品質研究会著作物取扱規則」および「ASDoQドキュメントライセンス（ADL）」に基づき許諾・提供されています。ADLの下で、著作権表示・ライセンス表示・改変履歴の明示を条件として、無償で自由な利用・複製・改変（翻案）・再配布が認められています（無保証での提供）。
+上記対象ファイルは、システム開発文書品質研究会（ASDoQ）が定める「システム開発文書品質研究会著作物取扱規則」および「ASDoQドキュメントライセンス（ADL 1.1）」に基づき許諾・提供されています。ADLの下で、著作権表示・ライセンス表示・改変履歴の明示を条件として、無償で自由な利用・複製・改変（翻案）・再配布が認められています（無保証での提供）。
 - `docs/guidelines/asdoq_model_markdown.md`（『システム開発文書品質モデル Ver. 2.0a-3』）は、公開されている原著作物『システム開発文書品質モデル Ver. 2.0a』を元に、一部改訂を加えたうえでAIエージェントによる読み込みに適したMarkdown形式へ変換・整形した派生著作物です。
-- `docs/guidelines/asdoq_checklist.md`（軽量チェックリスト）および `docs/guidelines/asdoq_writing_rules.md`（執筆ルール12箇条）は、原著作物『システム開発文書品質モデル Ver. 2.0a』（および上記改訂版 Ver. 2.0a-3）を基に、DADAProcessプロジェクトがAIエージェントの執筆・レビュー工程向けに抜粋・再構成・翻案した派生著作物です。原著作物そのものではありません。
+- `docs/guidelines/asdoq_checklist.md`（軽量チェックリスト）、`docs/guidelines/asdoq_writing_rules.md`（執筆ルール12箇条）、`tools/asdoq_dictionary.json`（拡張違反例辞書：8カテゴリ・86件）、および `.agents/skills/asdoq-reviewer/`（6大品質特性別の専門レビュアー定義 `C1`〜`C6` を含む）は、原著作物『システム開発文書品質モデル Ver. 2.0a』（および上記改訂版 Ver. 2.0a-3）の品質特性・副特性体系を基に、DADAProcessプロジェクトがAIエージェントの執筆・反証駆動レビュー工程向けに抜粋・再構成・翻案した派生著作物です（原著作物そのものではありません）。
+- また、`tools/asdoq_dictionary.json` の表記ルールには、報道・技術文書・公用文の一般表記原則（NHK、共同通信社、TC協会、JTF、JIS Z 8301、文化庁「公用文作成の考え方」）を参照し、DADAProcessプロジェクトが独自に作成した正規表現パターンおよびBefore/After改善例を含みます（JSONスキーマおよびスクリプト連携構造は MIT License の下で提供されます）。
 
 ------------------------------------------------------------------------------
-2. 日本語推敲スキル JP-Humanizer（原著作物: yomiyasu）
+2. 日本語推敲スキル JP-Humanizer および style_check.py（原著作物: yomiyasu）
 ------------------------------------------------------------------------------
 対象ファイル:
 - .agents/skills/JP-Humanizer/
+- tools/style_check.py
 
 [著作権表示およびライセンス条項]
 - 原著作物: `yomiyasu` (https://github.com/nanaism/yomiyasu)
-- 著作権者: Copyright (c) 2026 Aiichiro Oga (nanaism)
+- 解説記事: https://zenn.dev/algoartis/articles/0b1c731881b25c
+- 著作権者: Copyright (c) 2026 Aiichiro Oga (nanaism / ALGO ARTIS Inc.)
 - ライセンス: MIT License（全文は `.agents/skills/JP-Humanizer/LICENSE.md` に収録）
-- 改変の明示: DADAプロセスおよびASDoQシステム開発文書品質モデル向けに独自拡張・再構築した派生スキルであり、原著作物との混同を防ぐため名称を `JP-Humanizer` としています。
+- 改変の明示: DADAプロセスおよびASDoQシステム開発文書品質モデル向けに独自拡張・再構築し、決定論的検証ツール（`tools/style_check.py`）を追加した派生スキルであり、原著作物との混同を防ぐため名称を `JP-Humanizer` としています。
 
+------------------------------------------------------------------------------
+3. 参考文献・開発プロセス・表記基準の出典（References）
+------------------------------------------------------------------------------
+以下の文献・規格については、著作物本文の複製ではなく、プロセス設計・評価基準・文章分析の知見として参照しています。
+- 生成AI前後の日本語文章の定量分析:
+  逆瀬川 (@gyakuse)『生成AI以前と以後でエンジニアの文章はどう変わったのか: Qiitaの7万記事を数えてみた話』(https://nyosegawa.com/posts/qiita-writing-before-after-ai/)
+- 組込みソフトウェア開発プロセス:
+  独立行政法人 情報処理推進機構（IPA）『ESPR Ver.2.0：【改訂版】 組込みソフトウェア向け開発プロセスガイド』(https://www.ipa.go.jp/archive/publish/secbooks20071119.html)
+- エージェント設計原則:
+  Anthropic『Building Effective Agents』(https://www.anthropic.com/research/building-effective-agents)（`docs/guidelines/agent_design_principles.md`）
+- 要求仕様書章構成の参照規格:
+  IEEE Std 29148-2018 (Systems and software engineering — Life cycle processes — Requirements engineering)（`docs/templates/IEEE29148_2018_SRS.md` はDADAProcessが独自に記述した日本語ひな形であり、規格本文の転載ではありません）
+
+------------------------------------------------------------------------------
+4. 外部オプションパッケージおよび外部APIについて（同梱なし）
+------------------------------------------------------------------------------
+- 本リポジトリのPythonスクリプト（`tools/*.py`）はPython標準ライブラリのみで基本動作し、サードパーティ製ライブラリのソースコードやバイナリは本リポジトリに同梱していません。
+- 利用者が任意で `pip install` して使用する外部パッケージ（`janome`, `python-docx`, `openpyxl`, `python-pptx`, `pypdf`, `pdfplumber`, `reportlab`, `pillow`, `lxml` 等）については、導入時に各パッケージ固有のオープンソースライセンス（Apache-2.0, MIT, BSD, LGPL 等）が適用されます。
+- 利用者が任意でAPIキーを設定して利用する外部サービス（Google Gemini Decisions API `gemini-decision-1`、Upstash `context7` MCP 等）については、各サービス提供者の利用規約および料金体系が適用されます。
