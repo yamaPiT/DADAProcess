@@ -9,6 +9,7 @@
 python scratch/linkcheck.py
 python scratch/anchorcheck.py
 python scratch/regress.py
+python scratch/test_asdoq_reviewer.py
 python scratch/update_readme.py
 ```
 
@@ -25,6 +26,7 @@ $env:PYTHONIOENCODING = "utf-8"
 | `linkcheck.py` | Markdown 内のリポジトリパス参照が実在するかを検査する | README・スキル・ガイドラインを改訂したあと |
 | `anchorcheck.py` | 同一ファイル内の `[表示](#アンカー)` が、見出しスラッグまたは HTML の `<a id>` / `<a name>` に解決できるかを検査する | README の目次・章リンクを改訂したあと |
 | `regress.py` | `tools/dada_check.py` の回帰テスト（合成した最小成果物で終了コードを確認） | `dada_check.py` を改訂したあと |
+| `test_asdoq_reviewer.py` | `tools/asdoq_lint.py`・`asdoq_dictionary.json`・`export_skillset.py`・`asdoq-reviewer` スキル群の自動単体テスト一式（15件） | ASDoQレビュー機構・辞書・切り出しツール・READMEを改訂したあと |
 | `update_readme.py` | README 内の Global Rules 引用ブロック（`<RULE[user_global]>` … `</RULE[user_global]>`）を、スクリプト先頭のテンプレートで置換する | Global Rules の例文だけを一括更新したいとき |
 
 ## 注意

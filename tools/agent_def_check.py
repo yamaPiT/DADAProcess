@@ -77,7 +77,11 @@ PATH_SUFFIX_RE = re.compile(r"\.[A-Za-z0-9]{1,5}$")
 
 # プロセスの実行中に生成される成果物。存在しないことが正常なので実在確認の対象外とする
 # （これらの実在は tools/dada_check.py が検証する）
-OUTPUT_PATH_PREFIXES = ("docs/artifacts/",)
+OUTPUT_PATH_PREFIXES = (
+    "docs/artifacts/",
+    "docs/process/check_report.md",
+    "docs/process/agent_def_check_report.md",
+)
 
 # 記入例・引用の行に現れるパスは、実在しないことが正常なので対象外とする
 EXAMPLE_LINE_HINTS = ("記入例", "例:", "例：", "（例", "(例")

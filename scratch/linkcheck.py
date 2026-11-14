@@ -40,7 +40,12 @@ TOKEN_RE = re.compile(
     r"/[A-Za-z0-9./_<>-]*\.[A-Za-z0-9]{1,5})"
 )
 # 出力先・記入例・プレースホルダは実在チェックの対象外
-SKIP_PREFIX = ("docs/artifacts/", "docs/minutes/")
+SKIP_PREFIX = (
+    "docs/artifacts/",
+    "docs/minutes/",
+    "docs/process/check_report.md",
+    "docs/process/agent_def_check_report.md",
+)
 SKIP_HINT = ("記入例", "（例", "例:", "例）", "<name>", "<ペルソナ名>", "MyCompany",
              "<path>", "YYYY", "SPEC.md")
 # 記入例ブロック（`#### UNIT-EX` / `#### REQ-EX` 等）の配下は例示のため対象外
