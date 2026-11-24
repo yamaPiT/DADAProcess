@@ -16,6 +16,7 @@ use-context7-for-docs.md
 docs/process/check_report.md
 docs/process/agent_def_check_report.md
 docs/process/.style_snapshots/
+docs/process/.verify_cache.json
 
 # Python
 __pycache__/
