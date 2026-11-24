@@ -2,11 +2,12 @@
 # -*- coding: utf-8 -*-
 """
 DADA Process エージェント定義チェッカ (agent_def_check.py)
+対応ユニット: UNIT-010 (REQ-001, REQ-005)
 
 目的:
     開発対象が「エージェント定義」の場合に、自然言語レイヤー（SKILL.md / AGENTS.md /
     references）とプログラムレイヤー（tools 配下のスクリプト）の**一貫性**を機械的に検証する。
-    `.agents/AGENTS.md` 第9節「自然言語とプログラム言語の一貫性遵守」のうち、
+    `.agents/AGENTS.md` 第6節「開発対象判定（一貫性5項目）」のうち、
     機械で判定できる項目をAIの推論から本スクリプトへ委譲する。
 
     本スクリプトは `tools/dada_check.py` を変更・置換しない。両者は独立に実行する。
@@ -81,6 +82,17 @@ OUTPUT_PATH_PREFIXES = (
     "docs/artifacts/",
     "docs/process/check_report.md",
     "docs/process/agent_def_check_report.md",
+    "docs/process/.verify_cache.json",
+    "docs/process/benchmark_report.md",
+)
+
+# ワークスペース憲法（.agents/AGENTS.md）の上限サイズと必須4原則キーワード（UNIT-010 / REQ-001）
+MAX_AGENTS_MD_BYTES = 12288
+AGENTS_MD_REQUIRED_KEYWORDS = (
+    "ドキュメント絶対主義",
+    "承認ゲート",
+    "アテンション",
+    "役割の純化",
 )
 
 # 記入例・引用の行に現れるパスは、実在しないことが正常なので対象外とする
@@ -240,6 +252,32 @@ def extract_frontmatter(text: str):
 
 def check_skill(root: Path, files: list) -> Section:
     sec = Section("1. 自然言語レイヤーの構文と参照パス")
+
+    # --- ワークスペース憲法 (.agents/AGENTS.md) のサイズ上限・4原則検査 (UNIT-010 / REQ-001) ---
+    agents_md = root / ".agents" / "AGENTS.md"
+    if agents_md.is_file():
+        agents_bytes = agents_md.stat().st_size
+        if agents_bytes > MAX_AGENTS_MD_BYTES:
+            sec.add(
+                HIGH,
+                ".agents/AGENTS.md",
+                "憲法ファイルサイズが上限 {} bytes を超過している（現在 {} bytes）".format(
+                    MAX_AGENTS_MD_BYTES, agents_bytes
+                ),
+                "重複手順・記入例をオンデマンド文書へ分離し、{} bytes 以下へ圧縮する".format(
+                    MAX_AGENTS_MD_BYTES
+                ),
+            )
+        agents_text = read_text(agents_md)
+        missing_kw = [kw for kw in AGENTS_MD_REQUIRED_KEYWORDS if kw not in agents_text]
+        if missing_kw:
+            sec.add(
+                HIGH,
+                ".agents/AGENTS.md",
+                "必須4原則キーワードが欠落している: {}".format(", ".join(missing_kw)),
+                "DADAプロセスの4原則（ドキュメント絶対主義・承認ゲート・アテンション・役割の純化）を明記する",
+            )
+
     if not files:
         sec.note("走査対象のMarkdownファイルが見つからなかった（`--scan` の指定を確認する）。")
         return sec

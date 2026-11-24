@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ファイル名: export_skillset.py
-対応ユニット: UNIT-007 (REQ-007)
+対応ユニット: UNIT-010 (REQ-001, REQ-005)
 責務: DADAProcessリポジトリ内の単体スキルセット（office-suite / jp-humanizer / asdoq-reviewer / dada-core）を
       外部プロジェクトへ切り出し（エクスポート）し、利用ガイド（README.md）を自動生成する。
 公開インターフェース:
@@ -9,7 +9,7 @@
   - generate_bundle_readme(set_name: str) -> str
   - export_skillset(root: Path, set_name: str, out_dir: Path) -> list[str]
   - build_parser() -> argparse.ArgumentParser
-  - main() -> int
+  - main(argv: list[str] | None = None) -> int
 """
 
 from __future__ import annotations
@@ -100,6 +100,8 @@ SKILLSETS: dict[str, dict[str, object]] = {
             ".agents/skills/JP-Humanizer",
             ".agents/skills/office-document",
             "tools/dada_check.py",
+            "tools/dada_verify.py",
+            "tools/dada_benchmark.py",
             "tools/agent_def_check.py",
             "tools/asdoq_lint.py",
             "tools/asdoq_dictionary.json",
@@ -119,7 +121,7 @@ SKILLSETS: dict[str, dict[str, object]] = {
 
 # ---------------------------------------------------------------------------
 # 関数名: list_skillsets
-# 対応ユニット: UNIT-007 (REQ-007)
+# 対応ユニット: UNIT-010 (REQ-001, REQ-005)
 # 責務: 切り出し可能なスキルセット一覧と同梱パスを標準出力に表示する。
 # ---------------------------------------------------------------------------
 def list_skillsets() -> None:
@@ -138,7 +140,7 @@ def list_skillsets() -> None:
 
 # ---------------------------------------------------------------------------
 # 関数名: generate_bundle_readme
-# 対応ユニット: UNIT-007 (REQ-007)
+# 対応ユニット: UNIT-010 (REQ-001, REQ-005)
 # 責務: 単体スキルバンドル用のREADME.md（利用手順およびライセンス表記を含む）を生成する。
 # ---------------------------------------------------------------------------
 def generate_bundle_readme(set_name: str) -> str:
@@ -240,7 +242,7 @@ python tools/style_check.py verify --input draft.md
     if set_name == "asdoq-reviewer":
         return """# ASDoQ Hybrid Document Reviewer (単体スキルバンドル)
 
-<!-- UNIT-007 / REQ-007 -->
+<!-- UNIT-010 / REQ-001, REQ-005 -->
 
 このフォルダは、DADAProcess から切り出された **ASDoQ（システム開発文書品質研究会）のシステム開発文書品質モデル（6大品質特性）と拡張違反例辞書・構造クロスリファレンス解析に基づく反証駆動文書レビュー・修正** を行う単体スキルセットです。
 DADAプロセス（Phase 0〜5）を起動せず、あらゆる技術文書・企画書・仕様書・マニュアル・論文等の品質検証と自然化推敲に単体で利用できます。
@@ -314,7 +316,7 @@ python tools/style_check.py verify --input target_doc.md
 
 # ---------------------------------------------------------------------------
 # 関数名: export_skillset
-# 対応ユニット: UNIT-007 (REQ-007)
+# 対応ユニット: UNIT-010 (REQ-001, REQ-005)
 # 責務: 指定されたスキルセットのファイルをすべて検証したうえで出力先ディレクトリへコピーする。
 #       必須ファイルが1件でも欠落している場合はコピーを行わず FileNotFoundError を送出する。
 # ---------------------------------------------------------------------------
@@ -430,7 +432,7 @@ def export_skillset(root: Path, set_name: str, out_dir: Path) -> list[str]:
 
 # ---------------------------------------------------------------------------
 # 関数名: build_parser
-# 対応ユニット: UNIT-007 (REQ-007)
+# 対応ユニット: UNIT-010 (REQ-001, REQ-005)
 # 責務: CLI引数パーサを構築する。
 # ---------------------------------------------------------------------------
 def build_parser() -> argparse.ArgumentParser:
@@ -459,6 +461,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="出力先ディレクトリパス",
     )
     p_exp.add_argument(
+        "--root",
+        default=None,
+        help="切り出し元リポジトリルート（既定: 本ツールの親の親）",
+    )
+    p_exp.add_argument(
         "--summary",
         action="store_true",
         help="1行サマリのみを表示する",
@@ -468,13 +475,16 @@ def build_parser() -> argparse.ArgumentParser:
 
 # ---------------------------------------------------------------------------
 # 関数名: main
-# 対応ユニット: UNIT-007 (REQ-007)
-# 責務: CLIエントリーポイント。正常時は0、ファイル欠落等の異常時は1を返す。
+# 対応ユニット: UNIT-010 (REQ-001, REQ-005)
+# 責務: CLIエントリーポイント。正常時は0、ファイル欠落等の異常時は1、引数エラー時は2を返す。
 # ---------------------------------------------------------------------------
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
-    args = parser.parse_args()
-    root = Path(__file__).resolve().parent.parent
+    try:
+        args = parser.parse_args(argv)
+    except SystemExit as exc:
+        return 2 if exc.code != 0 else 0
+    root = Path(args.root).resolve() if getattr(args, "root", None) else Path(__file__).resolve().parent.parent
 
     if args.subcommand == "list":
         if getattr(args, "summary", False):
@@ -484,6 +494,9 @@ def main() -> int:
         return 0
 
     if args.subcommand == "export":
+        if not root.is_dir():
+            print(f"[ERROR] 切り出し元ルートが存在しません: {root}", file=sys.stderr)
+            return 2
         out_dir = Path(args.out).resolve()
         try:
             copied = export_skillset(root, args.set, out_dir)
